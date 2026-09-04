@@ -1,0 +1,92 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      Hola, {{ usuario.nombre }}
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+
+  <ion-text align="center" color="medium">
+    <p> {{ fecha }}</p>
+  </ion-text>
+
+  <!-- Racha -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-subtitle>Racha {{ racha.record }}</ion-card-subtitle>
+      <ion-card-title>
+        <ion-icon name="flame"></ion-icon>
+        {{ racha.actual }} días seguidos
+      </ion-card-title>
+    </ion-card-header>
+
+    <ion-card-content>
+      <ion-grid>
+        <ion-row>
+          @for (dia of racha.dias; track dia.inicial) {
+            <ion-col class="ion-text-center" [attr.data-estado]="dia.estado">
+              {{ dia.inicial }}
+            </ion-col>
+          }
+        </ion-row>
+      </ion-grid>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Métricas de la semana -->
+  <ion-grid>
+    <ion-row>
+      @for (metrica of metricas; track metrica.etiqueta) {
+        <ion-col size="4">
+          <ion-card>
+            <ion-card-header>
+              <ion-card-title>
+                {{ metrica.valor }}@if (metrica.unidad) { <small>{{ metrica.unidad }}</small> }
+              </ion-card-title>
+              <ion-card-subtitle>{{ metrica.etiqueta }}</ion-card-subtitle>
+            </ion-card-header>
+          </ion-card>
+        </ion-col>
+      }
+    </ion-row>
+  </ion-grid>
+
+  <!-- Rutina de hoy -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-subtitle>Toca hoy</ion-card-subtitle>
+      <ion-card-title>{{ rutinaHoy.nombre }}</ion-card-title>
+    </ion-card-header>
+
+    <ion-card-content>
+      <p>
+        {{ rutinaHoy.ejercicios }} ejercicios · {{ rutinaHoy.minutos }} min ·
+        {{ rutinaHoy.nivel }}
+      </p>
+      <ion-button routerLink="/tabs/entrenamiento">Empezar</ion-button>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Últimas sesiones -->
+  <ion-item lines="none">
+    <ion-label>Últimas sesiones</ion-label>
+    <ion-button slot="end" fill="clear" routerLink="/tabs/logros">
+      Ver todas
+    </ion-button>
+  </ion-item>
+
+  <ion-list>
+    @for (sesion of ultimasSesiones; track sesion.nombre) {
+      <ion-item>
+        <ion-icon slot="start" [name]="sesion.icono"></ion-icon>
+        <ion-label>
+          <h2>{{ sesion.nombre }}</h2>
+          <p>{{ sesion.dia }} · {{ sesion.minutos }} min</p>
+        </ion-label>
+        <ion-note slot="end">{{ sesion.metrica }}</ion-note>
+      </ion-item>
+    }
+  </ion-list>
+</ion-content>
