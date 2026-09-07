@@ -1,0 +1,29 @@
+.portada {
+  text-align: center;
+  padding: 32px 16px;
+  background: var(--ion-color-step-100, #f2f2f2);
+
+  p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+}
+
+.miniatura {
+  --size: 40px;
+  --border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ion-color-step-100, #f2f2f2);
+
+  ion-icon {
+    font-size: 20px;
+    color: var(--ion-color-primary);
+  }
+}
+
+ion-list-header ion-badge {
+  margin-inline-start: 8px;
+}

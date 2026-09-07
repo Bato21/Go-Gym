@@ -1,17 +1,351 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>
-      Rutina
-    </ion-title>
+    <ion-title>Rutinas</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="nuevaRutina()">
+        <ion-icon slot="icon-only" name="add"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Rutina</ion-title>
-    </ion-toolbar>
-  </ion-header>
 
-  <app-explore-container name="Rutina"></app-explore-container>
+  <!-- Selector de rutina -->
+  <ion-list inset="true">
+    <ion-item>
+      <ion-select
+        label="Mis rutinas"
+        interface="action-sheet"
+        [value]="rutinaSeleccionadaId"
+        (ionChange)="seleccionarRutina($any($event).detail.value)"
+      >
+        @for (rutina of rutinas; track rutina.id) {
+          <ion-select-option [value]="rutina.id">
+            {{ rutina.nombre }} · {{ rutina.ejercicios.length }} ejercicios
+          </ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+  </ion-list>
+
+  @if (rutinaActual; as rutina) {
+
+    <!-- Portada y resumen -->
+    <ion-card>
+      <ion-card-content class="portada">
+        <ion-icon name="image" size="large"></ion-icon>
+        <ion-text color="medium"><p>foto de la rutina</p></ion-text>
+      </ion-card-content>
+
+      <ion-card-header>
+        <ion-card-subtitle>Rutina · {{ rutina.categoria }}</ion-card-subtitle>
+        <ion-card-title>{{ rutina.nombre }}</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row class="ion-text-center">
+            <ion-col>
+              <ion-icon name="barbell" color="primary"></ion-icon>
+              <p>{{ rutina.ejercicios.length }} ejercicios</p>
+            </ion-col>
+            <ion-col>
+              <ion-icon name="time-outline" color="primary"></ion-icon>
+              <p>{{ rutina.minutos }} min</p>
+            </ion-col>
+            <ion-col>
+              <ion-icon name="flame" color="primary"></ion-icon>
+              <p>{{ totalSeries }} series</p>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+
+        <ion-chip color="primary" outline="true">{{ rutina.nivel }}</ion-chip>
+
+        <!-- Acciones sobre la rutina -->
+        <ion-grid class="ion-no-padding">
+          <ion-row>
+            <ion-col>
+              <ion-button
+                expand="block"
+                size="small"
+                [fill]="modoEdicion ? 'solid' : 'outline'"
+                (click)="alternarEdicion()"
+              >
+                <ion-icon slot="start" name="create-outline"></ion-icon>
+                {{ modoEdicion ? 'Listo' : 'Editar' }}
+              </ion-button>
+            </ion-col>
+            <ion-col>
+              <ion-button expand="block" size="small" fill="outline" (click)="duplicarRutina()">
+                <ion-icon slot="start" name="copy-outline"></ion-icon>
+                Duplicar
+              </ion-button>
+            </ion-col>
+            <ion-col>
+              <ion-button
+                expand="block"
+                size="small"
+                fill="outline"
+                color="danger"
+                [disabled]="rutinas.length <= 1"
+                (click)="eliminarRutina()"
+              >
+                <ion-icon slot="start" name="trash-outline"></ion-icon>
+                Borrar
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+
+        @if (modoEdicion) {
+          <ion-button expand="block" size="small" fill="clear" (click)="editarRutina()">
+            Editar datos de la rutina
+          </ion-button>
+        }
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Filtro por grupo muscular (solo fuera del modo edición) -->
+    @if (!modoEdicion && grupos.length > 1) {
+      <ion-segment
+        scrollable="true"
+        [value]="grupoActivo"
+        (ionChange)="cambiarGrupo($any($event).detail.value)"
+      >
+        @for (grupo of grupos; track grupo) {
+          <ion-segment-button [value]="grupo">
+            <ion-label>{{ grupo }}</ion-label>
+          </ion-segment-button>
+        }
+      </ion-segment>
+    }
+
+    <!-- Ejercicios -->
+    <ion-list>
+      <ion-list-header>
+        <ion-label>Ejercicios</ion-label>
+        <ion-badge color="primary">{{ ejerciciosFiltrados.length }}</ion-badge>
+      </ion-list-header>
+
+      <ion-reorder-group [disabled]="!puedeReordenar" (ionItemReorder)="reordenar($any($event))">
+        @for (ejercicio of ejerciciosFiltrados; track ejercicio.id) {
+          <ion-item [button]="modoEdicion" (click)="modoEdicion && editarEjercicio(ejercicio)">
+            <ion-thumbnail slot="start" class="miniatura">
+              <ion-icon name="barbell"></ion-icon>
+            </ion-thumbnail>
+
+            <ion-label>
+              <h2>{{ ejercicio.nombre }}</h2>
+              <p>
+                {{ ejercicio.series }} × {{ ejercicio.repeticiones }} ·
+                {{ ejercicio.carga }} · descanso {{ ejercicio.descansoSeg }} s
+              </p>
+            </ion-label>
+
+            @if (modoEdicion) {
+              <ion-button
+                slot="end"
+                fill="clear"
+                color="danger"
+                (click)="$event.stopPropagation(); eliminarEjercicio(ejercicio)"
+              >
+                <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+              </ion-button>
+              <ion-reorder slot="end"></ion-reorder>
+            } @else {
+              <ion-note slot="end">{{ ejercicio.grupo }}</ion-note>
+            }
+          </ion-item>
+        } @empty {
+          <ion-item lines="none">
+            <ion-label color="medium">
+              @if (grupoActivo === 'Todos') {
+                Esta rutina todavía no tiene ejercicios.
+              } @else {
+                No hay ejercicios de {{ grupoActivo }} en esta rutina.
+              }
+            </ion-label>
+          </ion-item>
+        }
+      </ion-reorder-group>
+    </ion-list>
+
+    @if (modoEdicion) {
+      <div class="ion-padding-horizontal">
+        <ion-button expand="block" fill="outline" (click)="nuevoEjercicio()">
+          <ion-icon slot="start" name="add"></ion-icon>
+          Añadir ejercicio
+        </ion-button>
+        <ion-text color="medium">
+          <p><small>Toca un ejercicio para editarlo o arrástralo para reordenar.</small></p>
+        </ion-text>
+      </div>
+    }
+
+    <!-- Enlaces a otras vistas -->
+    <ion-list>
+      <ion-item button="true" detail="true" routerLink="/tabs/calorias">
+        <ion-icon slot="start" name="flame"></ion-icon>
+        <ion-label>Calorías estimadas de la sesión</ion-label>
+      </ion-item>
+      <ion-item button="true" detail="true" routerLink="/tabs/logros">
+        <ion-icon slot="start" name="trophy"></ion-icon>
+        <ion-label>Ver progreso y rachas</ion-label>
+      </ion-item>
+    </ion-list>
+  }
 </ion-content>
+
+<ion-footer>
+  <ion-toolbar>
+    <ion-button
+      expand="block"
+      [disabled]="!rutinaActual || rutinaActual.ejercicios.length === 0"
+      routerLink="/tabs/entrenamiento"
+      [queryParams]="{ rutinaId: rutinaSeleccionadaId }"
+    >
+      <ion-icon slot="start" name="play"></ion-icon>
+      Empezar rutina
+    </ion-button>
+  </ion-toolbar>
+</ion-footer>
+
+<!-- Formulario: crear / editar rutina -->
+<ion-modal [isOpen]="modalRutinaAbierto" (didDismiss)="cerrarModalRutina()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>{{ rutinaEnEdicionId === null ? 'Nueva rutina' : 'Editar rutina' }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="cerrarModalRutina()">
+            <ion-icon slot="icon-only" name="close"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding">
+      <ion-list>
+        <ion-item>
+          <ion-input
+            label="Nombre"
+            labelPlacement="stacked"
+            placeholder="Push B"
+            [(ngModel)]="borradorRutina.nombre"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            label="Categoría"
+            labelPlacement="stacked"
+            placeholder="Fuerza"
+            [(ngModel)]="borradorRutina.categoria"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-select label="Nivel" [(ngModel)]="borradorRutina.nivel">
+            @for (nivel of niveles; track nivel) {
+              <ion-select-option [value]="nivel">{{ nivel }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="number"
+            label="Duración (min)"
+            labelPlacement="stacked"
+            [(ngModel)]="borradorRutina.minutos"
+          ></ion-input>
+        </ion-item>
+      </ion-list>
+
+      <ion-button
+        expand="block"
+        [disabled]="!borradorRutina.nombre.trim()"
+        (click)="guardarRutina()"
+      >
+        Guardar rutina
+      </ion-button>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- Formulario: añadir / editar ejercicio -->
+<ion-modal [isOpen]="modalEjercicioAbierto" (didDismiss)="cerrarModalEjercicio()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>
+          {{ ejercicioEnEdicionId === null ? 'Nuevo ejercicio' : 'Editar ejercicio' }}
+        </ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="cerrarModalEjercicio()">
+            <ion-icon slot="icon-only" name="close"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding">
+      <ion-list>
+        <ion-item>
+          <ion-input
+            label="Ejercicio"
+            labelPlacement="stacked"
+            placeholder="Press banca"
+            [(ngModel)]="borradorEjercicio.nombre"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-select label="Grupo muscular" [(ngModel)]="borradorEjercicio.grupo">
+            @for (grupo of gruposMusculares; track grupo) {
+              <ion-select-option [value]="grupo">{{ grupo }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="number"
+            label="Series"
+            labelPlacement="stacked"
+            [(ngModel)]="borradorEjercicio.series"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="number"
+            label="Repeticiones"
+            labelPlacement="stacked"
+            [(ngModel)]="borradorEjercicio.repeticiones"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            label="Carga"
+            labelPlacement="stacked"
+            placeholder="45 kg / Peso corporal"
+            [(ngModel)]="borradorEjercicio.carga"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            type="number"
+            label="Descanso (s)"
+            labelPlacement="stacked"
+            [(ngModel)]="borradorEjercicio.descansoSeg"
+          ></ion-input>
+        </ion-item>
+      </ion-list>
+
+      <ion-button
+        expand="block"
+        [disabled]="!borradorEjercicio.nombre.trim()"
+        (click)="guardarEjercicio()"
+      >
+        Guardar ejercicio
+      </ion-button>
+    </ion-content>
+  </ng-template>
+</ion-modal>
