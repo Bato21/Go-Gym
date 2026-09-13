@@ -10,4 +10,27 @@
       <ion-title size="large">perfil</ion-title>
     </ion-toolbar>
   </ion-header>
+
+  <ion-list [inset]="true">
+    <ion-list-header>
+      <ion-label>Acerca de</ion-label>
+    </ion-list-header>
+
+    <!-- La licencia free tier de RepDB exige atribución visible en la app. -->
+    <ion-item
+      button
+      detail
+      href="https://repdb.co"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <ion-label class="ion-text-wrap">
+        <h3>Catálogo de ejercicios</h3>
+        <p>
+          Ejercicios, imágenes y descripciones por RepDB, usados bajo su licencia
+          free tier.
+        </p>
+      </ion-label>
+    </ion-item>
+  </ion-list>
 </ion-content>
