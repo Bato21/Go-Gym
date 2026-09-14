@@ -33,9 +33,9 @@
 
     <!-- Portada y resumen -->
     <ion-card>
-      <ion-card-content class="portada">
-        <ion-icon name="image" size="large"></ion-icon>
-        <ion-text color="medium"><p>foto de la rutina</p></ion-text>
+      <ion-card-content [class]="clasePortada">
+        <ion-icon name="image"></ion-icon>
+        <p>foto de la rutina</p>
       </ion-card-content>
 
       <ion-card-header>
@@ -44,24 +44,15 @@
       </ion-card-header>
 
       <ion-card-content>
-        <ion-grid>
-          <ion-row class="ion-text-center">
-            <ion-col>
-              <ion-icon name="barbell" color="primary"></ion-icon>
-              <p>{{ rutina.ejercicios.length }} ejercicios</p>
-            </ion-col>
-            <ion-col>
-              <ion-icon name="time-outline" color="primary"></ion-icon>
-              <p>{{ rutina.minutos }} min</p>
-            </ion-col>
-            <ion-col>
-              <ion-icon name="flame" color="primary"></ion-icon>
-              <p>{{ totalSeries }} series</p>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
+        <p class="meta">
+          {{ rutina.ejercicios.length }} ejercicios · {{ rutina.minutos }} min ·
+          {{ rutina.nivel }}
+        </p>
 
-        <ion-chip color="primary" outline="true">{{ rutina.nivel }}</ion-chip>
+        <div class="insignias">
+          <ion-badge color="primary">{{ totalSeries }} series</ion-badge>
+          <ion-badge color="medium">{{ volumenFormateado }} kg estimados</ion-badge>
+        </div>
 
         <!-- Acciones sobre la rutina -->
         <ion-grid class="ion-no-padding">
@@ -90,7 +81,7 @@
                 fill="outline"
                 color="danger"
                 [disabled]="rutinas.length <= 1"
-                (click)="eliminarRutina()"
+                (click)="confirmarEliminarRutina()"
               >
                 <ion-icon slot="start" name="trash-outline"></ion-icon>
                 Borrar
@@ -109,22 +100,23 @@
 
     <!-- Filtro por grupo muscular (solo fuera del modo edición) -->
     @if (!modoEdicion && grupos.length > 1) {
-      <ion-segment
-        scrollable="true"
-        [value]="grupoActivo"
-        (ionChange)="cambiarGrupo($any($event).detail.value)"
-      >
+      <div class="chips">
         @for (grupo of grupos; track grupo) {
-          <ion-segment-button [value]="grupo">
-            <ion-label>{{ grupo }}</ion-label>
-          </ion-segment-button>
+          <ion-chip
+            color="primary"
+            [outline]="grupoActivo !== grupo"
+            (click)="cambiarGrupo(grupo)"
+          >
+            {{ grupo }}
+            <span class="conteo">{{ contarPorGrupo(grupo) }}</span>
+          </ion-chip>
         }
-      </ion-segment>
+      </div>
     }
 
     <!-- Ejercicios -->
     <ion-list>
-      <ion-list-header>
+      <ion-list-header class="seccion">
         <ion-label>Ejercicios</ion-label>
         <ion-badge color="primary">{{ ejerciciosFiltrados.length }}</ion-badge>
       </ion-list-header>
@@ -140,7 +132,7 @@
               <h2>{{ ejercicio.nombre }}</h2>
               <p>
                 {{ ejercicio.series }} × {{ ejercicio.repeticiones }} ·
-                {{ ejercicio.carga }} · descanso {{ ejercicio.descansoSeg }} s
+                {{ ejercicio.carga }}@if (modoEdicion) { · descanso {{ ejercicio.descansoSeg }} s }
               </p>
             </ion-label>
 
@@ -149,7 +141,7 @@
                 slot="end"
                 fill="clear"
                 color="danger"
-                (click)="$event.stopPropagation(); eliminarEjercicio(ejercicio)"
+                (click)="$event.stopPropagation(); confirmarEliminarEjercicio(ejercicio)"
               >
                 <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
               </ion-button>

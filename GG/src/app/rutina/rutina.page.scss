@@ -1,22 +1,76 @@
 .portada {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 120px;
   text-align: center;
-  padding: 32px 16px;
-  background: var(--ion-color-step-100, #f2f2f2);
+  color: var(--ion-color-medium);
+
+  ion-icon {
+    font-size: 28px;
+    color: rgba(var(--ion-color-primary-rgb), 0.8);
+  }
 
   p {
-    margin: 4px 0 0;
-    font-size: 12px;
+    margin: 0;
+    font-size: 11px;
     letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+}
+
+// Un degradado fijo por rutina, mientras no haya foto real.
+.portada--0 {
+  background: linear-gradient(135deg, rgba(var(--ion-color-primary-rgb), 0.3), rgba(var(--ion-color-primary-rgb), 0.04));
+}
+
+.portada--1 {
+  background: linear-gradient(200deg, rgba(var(--ion-color-primary-rgb), 0.22), rgba(var(--ion-color-primary-rgb), 0.06));
+}
+
+.portada--2 {
+  background: linear-gradient(75deg, rgba(var(--ion-color-primary-rgb), 0.26), rgba(var(--ion-color-primary-rgb), 0.03));
+}
+
+.meta {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ion-color-medium);
+}
+
+.insignias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+  padding: 4px 12px;
+  overflow-x: auto;
+
+  ion-chip {
+    flex-shrink: 0;
+  }
+
+  .conteo {
+    margin-left: 6px;
+    font-size: 11px;
+    opacity: 0.7;
   }
 }
 
 .miniatura {
   --size: 40px;
-  --border-radius: 8px;
+  --border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--ion-color-step-100, #f2f2f2);
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
 
   ion-icon {
     font-size: 20px;
@@ -24,6 +78,20 @@
   }
 }
 
+ion-list-header.seccion ion-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ion-color-medium);
+}
+
 ion-list-header ion-badge {
   margin-inline-start: 8px;
+}
+
+ion-footer ion-button {
+  --border-radius: 14px;
+  height: 46px;
+  font-weight: 600;
 }

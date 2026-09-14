@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
+  AlertController,
   IonBadge,
   IonButton,
   IonButtons,
@@ -27,8 +28,6 @@ import {
   IonReorder,
   IonReorderGroup,
   IonRow,
-  IonSegment,
-  IonSegmentButton,
   IonSelect,
   IonSelectOption,
   IonText,
@@ -47,7 +46,6 @@ import {
   flame,
   image,
   play,
-  timeOutline,
   trashOutline,
   trophy,
 } from 'ionicons/icons';
@@ -103,8 +101,6 @@ interface Rutina {
     IonReorder,
     IonReorderGroup,
     IonRow,
-    IonSegment,
-    IonSegmentButton,
     IonSelect,
     IonSelectOption,
     IonText,
@@ -179,6 +175,8 @@ export class RutinaPage {
   ejercicioEnEdicionId: number | null = null;
   borradorEjercicio = this.ejercicioVacio();
 
+  private readonly alertas = inject(AlertController);
+
   constructor() {
     addIcons({
       add,
@@ -189,7 +187,6 @@ export class RutinaPage {
       flame,
       image,
       play,
-      timeOutline,
       trashOutline,
       trophy,
     });
@@ -220,6 +217,32 @@ export class RutinaPage {
       (suma, e) => suma + e.series,
       0
     );
+  }
+
+  /** Volumen de la rutina: series x reps x carga, ignorando lo que no va en kg. */
+  get volumenEstimado(): number {
+    return (this.rutinaActual?.ejercicios ?? []).reduce(
+      (suma, e) => suma + e.series * e.repeticiones * this.cargaEnKg(e.carga),
+      0
+    );
+  }
+
+  get volumenFormateado(): string {
+    return Math.round(this.volumenEstimado).toLocaleString('es-CL');
+  }
+
+  /** Ejercicios de un grupo muscular, para el contador de cada chip. */
+  contarPorGrupo(grupo: string): number {
+    const ejercicios = this.rutinaActual?.ejercicios ?? [];
+    if (grupo === 'Todos') {
+      return ejercicios.length;
+    }
+    return ejercicios.filter((e) => e.grupo === grupo).length;
+  }
+
+  /** Degradado de portada fijo por rutina, para distinguirlas de un vistazo. */
+  get clasePortada(): string {
+    return `portada portada--${this.rutinaSeleccionadaId % 3}`;
   }
 
   /** Solo se puede reordenar en modo edición y sobre la lista completa. */
@@ -330,6 +353,24 @@ export class RutinaPage {
     this.modoEdicion = false;
   }
 
+  async confirmarEliminarRutina() {
+    const rutina = this.rutinaActual;
+    if (!rutina || this.rutinas.length <= 1) {
+      return;
+    }
+
+    const alerta = await this.alertas.create({
+      header: 'Borrar rutina',
+      message: `Se eliminará "${rutina.nombre}" con sus ${rutina.ejercicios.length} ejercicios. No se puede deshacer.`,
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        { text: 'Borrar', role: 'destructive', handler: () => this.eliminarRutina() },
+      ],
+    });
+
+    await alerta.present();
+  }
+
   cerrarModalRutina() {
     this.modalRutinaAbierto = false;
     this.rutinaEnEdicionId = null;
@@ -393,6 +434,23 @@ export class RutinaPage {
     }
   }
 
+  async confirmarEliminarEjercicio(ejercicio: Ejercicio) {
+    const alerta = await this.alertas.create({
+      header: 'Quitar ejercicio',
+      message: `"${ejercicio.nombre}" saldrá de esta rutina.`,
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Quitar',
+          role: 'destructive',
+          handler: () => this.eliminarEjercicio(ejercicio),
+        },
+      ],
+    });
+
+    await alerta.present();
+  }
+
   cerrarModalEjercicio() {
     this.modalEjercicioAbierto = false;
     this.ejercicioEnEdicionId = null;
@@ -408,6 +466,15 @@ export class RutinaPage {
   }
 
   // -------------------------------------------------------------- auxiliares
+
+  /** "45 kg" -> 45. "Peso corporal" o "60 s" no suman volumen. */
+  private cargaEnKg(carga: string): number {
+    if (!/kg/i.test(carga)) {
+      return 0;
+    }
+    const valor = parseFloat(carga.replace(',', '.'));
+    return Number.isFinite(valor) ? valor : 0;
+  }
 
   private siguienteId(ids: number[]): number {
     return ids.length ? Math.max(...ids) + 1 : 1;

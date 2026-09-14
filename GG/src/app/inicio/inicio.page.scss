@@ -1,0 +1,151 @@
+.encabezado,
+.titulo-racha,
+.fila-hoy,
+.seccion,
+.metricas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.encabezado .fecha,
+.metrica .etiqueta,
+.seccion span {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ion-color-medium);
+}
+
+.encabezado {
+  padding: 4px 16px 8px;
+
+  h1 {
+    margin: 2px 0 0;
+    font-size: 22px;
+  }
+}
+
+ion-avatar,
+.miniatura {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+ion-avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+}
+
+.titulo-racha ion-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.racha-dias {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+
+  .dia {
+    flex: 1;
+    padding: 10px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 10px;
+
+    &[data-estado='completado'] {
+      color: var(--ion-color-primary-contrast);
+      background: var(--ion-color-primary);
+    }
+
+    &[data-estado='descanso'] {
+      color: var(--ion-color-medium);
+      box-shadow: inset 0 0 0 1px var(--ion-color-step-250);
+    }
+
+    &[data-estado='hoy'] {
+      color: var(--ion-color-primary);
+      box-shadow: inset 0 0 0 2px var(--ion-color-primary);
+    }
+  }
+}
+
+ion-progress-bar {
+  height: 6px;
+}
+
+.meta,
+.fila-hoy p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+
+.metricas {
+  padding: 0 16px;
+}
+
+.metrica {
+  flex: 1;
+  padding: 12px 4px;
+  text-align: center;
+  border-radius: 14px;
+  background: var(--ion-card-background, var(--ion-color-step-50));
+
+  .valor {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  small {
+    margin-left: 2px;
+    font-size: 11px;
+  }
+}
+
+.destacada {
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.55);
+
+  ion-card-subtitle {
+    color: var(--ion-color-primary);
+  }
+}
+
+.fila-hoy {
+  h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  ion-button {
+    flex-shrink: 0;
+  }
+}
+
+.seccion {
+  padding: 16px 8px 4px 16px;
+}
+
+.miniatura {
+  --size: 40px;
+  --border-radius: 10px;
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+
+  ion-icon {
+    font-size: 20px;
+    color: var(--ion-color-primary);
+  }
+}
