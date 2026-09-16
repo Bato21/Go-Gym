@@ -1,0 +1,95 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Añadir ejercicio</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="cerrar.emit()">
+        <ion-icon slot="icon-only" name="close"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-toolbar>
+    <ion-searchbar
+      placeholder="Buscar ejercicio o equipo"
+      [debounce]="200"
+      [value]="texto"
+      (ionInput)="buscar($any($event).detail.value)"
+    ></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <!-- Filtro por grupo muscular -->
+  <div class="chips">
+    @for (grupo of grupos; track grupo) {
+      <ion-chip
+        color="primary"
+        [outline]="grupoActivo !== grupo"
+        (click)="cambiarGrupo(grupo)"
+      >
+        {{ grupo }}
+      </ion-chip>
+    }
+  </div>
+
+  @if (cargando) {
+    <div class="estado">
+      <ion-spinner></ion-spinner>
+      <p>Cargando catálogo…</p>
+    </div>
+  } @else if (error) {
+    <div class="estado">
+      <ion-icon name="alert-circle-outline" color="danger"></ion-icon>
+      <p>No se pudo cargar el catálogo de ejercicios.</p>
+      <ion-button fill="outline" size="small" (click)="cargar()">
+        Reintentar
+      </ion-button>
+    </div>
+  } @else {
+    <ion-list>
+      @for (ejercicio of visibles; track ejercicio.id) {
+        <ion-item button="true" detail="false" (click)="elegir(ejercicio)">
+          <ion-thumbnail slot="start" class="miniatura">
+            @if (ejercicio.imagen) {
+              <img
+                [src]="urlImagen(ejercicio)"
+                [alt]="ejercicio.nombre"
+                loading="lazy"
+              />
+            } @else {
+              <ion-icon name="barbell"></ion-icon>
+            }
+          </ion-thumbnail>
+
+          <ion-label>
+            <h2>{{ ejercicio.nombre }}</h2>
+            <p>{{ ejercicio.equipo }} · {{ ejercicio.musculos.join(', ') }}</p>
+          </ion-label>
+
+          <ion-note slot="end">{{ ejercicio.grupo }}</ion-note>
+        </ion-item>
+      } @empty {
+        <ion-item lines="none">
+          <ion-label color="medium">
+            @if (texto) {
+              Sin resultados para "{{ texto }}".
+            } @else {
+              No hay ejercicios de {{ grupoActivo }}.
+            }
+          </ion-label>
+        </ion-item>
+      }
+    </ion-list>
+
+    @if (resultados.length) {
+      <ion-infinite-scroll
+        [disabled]="!hayMas"
+        (ionInfinite)="cargarMas($any($event))"
+      >
+        <ion-infinite-scroll-content
+          loadingText="Cargando más ejercicios…"
+        ></ion-infinite-scroll-content>
+      </ion-infinite-scroll>
+    }
+  }
+</ion-content>

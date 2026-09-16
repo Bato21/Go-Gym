@@ -1,0 +1,48 @@
+.chips {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  ion-chip {
+    flex: 0 0 auto;
+  }
+}
+
+.miniatura {
+  --size: 56px;
+  --border-radius: 10px;
+
+  display: grid;
+  place-items: center;
+  background: var(--ion-color-light);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  ion-icon {
+    font-size: 24px;
+    color: var(--ion-color-medium);
+  }
+}
+
+.estado {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--ion-color-medium);
+
+  ion-icon {
+    font-size: 32px;
+  }
+}
