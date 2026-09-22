@@ -1,0 +1,454 @@
+/*Esta parte consiste en editar el estilo */
+ion-content {
+
+  --background: #111111;
+
+}
+
+/*A continuación se define el estilo de la barra de herramientas */
+ion-toolbar {
+
+  --background: #1d1d1d;
+
+  --color: white;
+
+}
+
+/*Esta parte define el estilo del contenedor principal */
+.contenedor {
+
+  padding: 20px;
+
+  padding-bottom: 100px;
+
+}
+/*Esta parte define el estilo de la tarjeta de perfil */
+.perfil-card {
+
+  background: #1c1c1e;
+
+  padding: 25px;
+
+  border-radius: 20px;
+
+  text-align: center;
+
+  margin-bottom: 30px;
+
+}
+
+/* Esta parte define el estilo del icono de usuario */
+.usuario-icono {
+
+  font-size: 85px;
+
+  color: #428cff;
+
+}
+/* Esta parte define el estilo del nombre de usuario */
+.perfil-card h1 {
+
+  color: white;
+
+  font-size: 23px;
+
+  margin: 10px 0 4px;
+
+}
+/* Esta parte define el estilo del correo electrónico del usuario */
+.subtitulo {
+
+  color: #999999;
+
+  margin-top: 0;
+
+}
+
+/*Esta parte consiste en el diseño de la racha de entrenamientos */
+.racha {
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  background: #292929;
+
+  padding: 10px 18px;
+
+  border-radius: 30px;
+
+  margin-top: 15px;
+
+  color: white;
+
+}
+
+/* Esta parte define el estilo del icono de racha */
+.racha ion-icon {
+
+  color: #ff7a00;
+
+  font-size: 28px;
+
+}
+
+/* Esta parte define el estilo del número de racha */
+.numero {
+
+  font-size: 20px;
+
+  font-weight: bold;
+
+  margin-right: 4px;
+
+}
+
+/* Esta parte define el estilo del texto de racha */
+.titulo-seccion {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  margin-top: 25px;
+
+  margin-bottom: 15px;
+
+}
+
+/*Esta parte define el estilo del título de la sección */
+.titulo-seccion h2 {
+
+  color: white;
+
+  font-size: 19px;
+
+  margin: 0;
+
+}
+
+/* Esta parte define el estilo del icono de la sección */
+.titulo-seccion ion-icon {
+  color: #428cff;
+  font-size: 22px;
+
+}
+/*Esta parte consiste en el diseño de los entrenamientos y la información del usuario */
+.entrenamiento {
+
+  background: #1c1c1e;
+
+  padding: 15px;
+
+  border-radius: 15px;
+
+  display: flex;
+
+  align-items: center;
+
+  margin-bottom: 10px;
+
+}
+
+/*Esta parte muestra el icono de la fecha del entrenamiento */
+.fecha {
+
+  width: 45px;
+
+  height: 45px;
+
+  min-width: 45px;
+
+  border-radius: 12px;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  background: #26344d;
+
+  margin-right: 13px;
+
+}
+
+/* Esta parte define el estilo del icono de fecha */
+.fecha ion-icon {
+
+  color: #428cff;
+
+  font-size: 23px;
+
+}
+
+/* Esta parte define el estilo de la información del entrenamiento */
+.info-entrenamiento {
+
+  flex: 1;
+
+}
+
+/* Esta parte define el estilo del título del entrenamiento */
+.info-entrenamiento h3 {
+
+  color: white;
+
+  margin: 0 0 5px;
+
+  font-size: 15px;
+
+}
+
+/* Esta parte define el estilo de la descripción del entrenamiento */
+.info-entrenamiento p {
+
+  margin: 0;
+
+  color: #999999;
+
+  font-size: 13px;
+
+}
+/* Esta parte define el estilo de la hora del entrenamiento */
+.hora {
+
+  color: #aaaaaa;
+
+  font-size: 13px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 4px;
+
+}
+
+/* Esta parte define el estilo del icono de la hora del entrenamiento */
+.hora ion-icon {
+
+  font-size: 16px;
+
+}
+/* Esta parte define el estilo de los logros del usuario */
+.info-card {
+
+  background: #1c1c1e;
+
+  border-radius: 15px;
+
+  padding: 16px;
+
+  margin-bottom: 12px;
+
+  display: flex;
+
+  align-items: center;
+
+}
+
+/* Esta parte define el estilo del icono de información */
+.info-icono {
+
+  width: 48px;
+
+  height: 48px;
+
+  min-width: 48px;
+
+  background: #26344d;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  border-radius: 12px;
+
+  margin-right: 15px;
+
+}
+
+/* Esta parte define el estilo del icono dentro del contenedor de información */
+.info-icono ion-icon {
+
+  font-size: 24px;
+
+  color: #428cff;
+
+}
+
+/* Esta parte define el estilo del contenedor de información */
+.contenido-info {
+
+  flex: 1;
+
+}
+
+/* Esta parte define el estilo del título dentro del contenedor de información */
+.info-card h3 {
+
+  color: white;
+
+  margin: 3px 0 0;
+
+  font-size: 16px;
+
+}
+
+/* Esta parte define el estilo de la etiqueta dentro del contenedor de información */
+.label {
+
+  color: #999999;
+
+  margin: 0;
+
+  font-size: 13px;
+
+}
+/* Esta parte define el estilo del progreso de los logros */
+.progreso-card {
+
+  display: block;
+
+}
+
+/* Esta parte define el estilo del contenedor de progreso */
+.progreso-superior {
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin-bottom: 13px;
+
+}
+
+/* Esta parte define el estilo del porcentaje de progreso */
+.progreso-superior ion-icon {
+
+  color: #428cff;
+
+  font-size: 28px;
+
+}
+
+/* Esta parte define el estilo del porcentaje de progreso */
+ion-progress-bar {
+
+  height: 7px;
+
+  border-radius: 10px;
+
+  --background: #333333;
+
+  --progress-background: #428cff;
+
+}
+/*Esta parte es para editar los datos del usuario */
+.editar-datos {
+
+  width: 100%;
+
+  margin-top: 15px;
+
+}
+
+/*Esta parte define el estilo de los campos de entrada */
+.campo {
+
+  text-align: left;
+
+  margin-bottom: 15px;
+
+}
+
+/* Esta parte define el estilo de las etiquetas de los campos de entrada */
+.campo label {
+
+  display: block;
+
+  color: #999999;
+
+  font-size: 13px;
+
+  margin-bottom: 5px;
+
+}
+
+/*Esta parte define el estilo de los campos de entrada */
+
+
+/*Aqui se define el estilo de los campos de entrada */
+ion-input {
+
+  --background: #292929;
+
+  --color: white;
+
+  --placeholder-color: #777777;
+
+  --padding-start: 12px;
+
+  --padding-end: 12px;
+
+  border-radius: 10px;
+
+  min-height: 45px;
+
+  margin-top: 5px;
+
+}
+
+/* Esta parte define el estilo de los botones de acción */
+.editar {
+
+  margin-top: 25px;
+
+  --background: #428cff;
+
+  --border-radius: 12px;
+
+  height: 48px;
+
+  font-weight: bold;
+
+}
+
+/*Esta parte define el estilo del botón de guardar cambios */
+.guardar {
+
+  margin-top: 25px;
+
+  --background: #428cff;
+
+  --border-radius: 12px;
+
+  height: 48px;
+
+  font-weight: bold;
+
+}
+
+/*Esta parte define el estilo del botón de cancelar cambios */
+.cancelar {
+
+  margin-top: 10px;
+
+  --color: #aaaaaa;
+
+  --border-color: #555555;
+
+  --border-radius: 12px;
+
+  height: 48px;
+
+}

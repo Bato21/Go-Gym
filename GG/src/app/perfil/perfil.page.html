@@ -1,36 +1,208 @@
-<ion-header [translucent]="true">
+<ion-header>
   <ion-toolbar>
-    <ion-title>perfil</ion-title>
+    <ion-title>
+      Perfil
+    </ion-title>
   </ion-toolbar>
 </ion-header>
-
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">perfil</ion-title>
-    </ion-toolbar>
-  </ion-header>
-
-  <ion-list [inset]="true">
-    <ion-list-header>
-      <ion-label>Acerca de</ion-label>
-    </ion-list-header>
-
-    <!-- La licencia free tier de RepDB exige atribución visible en la app. -->
-    <ion-item
-      button
-      detail
-      href="https://repdb.co"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <ion-label class="ion-text-wrap">
-        <h3>Catálogo de ejercicios</h3>
-        <p>
-          Ejercicios, imágenes y descripciones por RepDB, usados bajo su licencia
-          free tier.
+<ion-content>
+  <div class="contenedor">
+    <!-- Perfil del usuario -->
+    <div class="perfil-card">
+      <ion-icon
+        class="usuario-icono"
+        name="person-circle-outline">
+      </ion-icon>
+      <!-- Esta parte se muestra en modo normal -->
+      <div *ngIf="!editando">
+        <h1>
+          {{ nombre }} {{ apellido }}
+        </h1>
+        <p class="subtitulo">
+          Mi perfil de entrenamiento
         </p>
-      </ion-label>
-    </ion-item>
-  </ion-list>
+      </div>
+      <!-- Esta parte se muestra en modo edición -->
+      <div
+        class="editar-datos"
+        *ngIf="editando">
+        <div class="campo">
+          <label>
+            Nombre
+          </label>
+          <ion-input
+            [(ngModel)]="nombre"
+            placeholder="Ingresa tu nombre">
+          </ion-input>
+        </div>
+        <div class="campo">
+          <label>
+            Apellido
+          </label>
+          <ion-input
+            [(ngModel)]="apellido"
+            placeholder="Ingresa tu apellido">
+          </ion-input>
+        </div>
+      </div>
+      <!-- Esta parte se muestra en modo normal -->
+      <div class="racha">
+        <ion-icon
+          name="flame-outline">
+        </ion-icon>
+        <div>
+          <span class="numero">
+            {{ diasRacha }}
+          </span>
+          <span>
+            días de racha
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- Esta parte consiste en los próximos entrenamientos -->
+    <div class="titulo-seccion">
+      <ion-icon
+        name="calendar-outline">
+      </ion-icon>
+      <h2>
+        Próximos entrenamientos
+      </h2>
+    </div>
+    <div
+      class="entrenamiento"
+      *ngFor="let entrenamiento of proximosEntrenamientos">
+      <div class="fecha">
+        <ion-icon
+          name="calendar-outline">
+        </ion-icon>
+      </div>
+      <div class="info-entrenamiento">
+        <h3>
+          {{ entrenamiento.entrenamiento }}
+        </h3>
+        <p>
+          {{ entrenamiento.dia }}
+        </p>
+      </div>
+      <div class="hora">
+        <ion-icon
+          name="time-outline">
+        </ion-icon>
+        {{ entrenamiento.hora }}
+      </div>
+    </div>
+<!-- Esta parte consiste en el progreso del usuario -->
+    <div class="titulo-seccion">
+      <ion-icon
+        name="fitness-outline">
+      </ion-icon>
+      <h2>
+        Mi progreso
+      </h2>
+    </div>
+    <!-- OBJETIVO -->
+    <div class="info-card">
+      <div class="info-icono">
+        <ion-icon
+          name="trophy-outline">
+        </ion-icon>
+      </div>
+      <div class="contenido-info">
+        <p class="label">
+          Mi objetivo
+        </p>
+<!-- Esta parte se muestra en modo normal -->
+        <h3 *ngIf="!editando">
+          {{ objetivo }}
+        </h3>
+        <!-- Esta parte se muestra en modo edición -->
+        <ion-input
+          *ngIf="editando"
+          [(ngModel)]="objetivo"
+          placeholder="Ej: Ganar masa muscular">
+        </ion-input>
+      </div>
+    </div>
+<!-- Esta parte consiste en mostrar los entrenamientos de la semana -->
+    <div class="info-card progreso-card">
+      <div class="progreso-superior">
+        <div>
+          <p class="label">
+            Entrenamientos esta semana
+          </p>
+          <h3>
+            {{ entrenamientosSemana }}
+            de
+            {{ metaSemanal }}
+          </h3>
+        </div>
+        <ion-icon
+          name="barbell-outline">
+        </ion-icon>
+      </div>
+      <ion-progress-bar
+        [value]="progresoSemanal">
+      </ion-progress-bar>
+    </div>
+<!-- Esta parte consiste en mostrar la rutina favorita -->
+    <div class="info-card">
+      <div class="info-icono">
+        <ion-icon
+          name="star-outline">
+        </ion-icon>
+      </div>
+      <div class="contenido-info">
+        <p class="label">
+          Rutina favorita
+        </p>
+        <!-- Esta parte se muestra en modo normal -->
+        <h3 *ngIf="!editando">
+          {{ rutinaFavorita }}
+        </h3>
+        <!-- Esta parte se muestra en modo edición -->
+        <ion-input
+          *ngIf="editando"
+          [(ngModel)]="rutinaFavorita"
+          placeholder="Ej: Push Pull Legs">
+        </ion-input>
+      </div>
+    </div>
+    <ion-button
+      *ngIf="!editando"
+      expand="block"
+      class="editar"
+      (click)="editarPerfil()">
+      <ion-icon
+        slot="start"
+        name="create-outline">
+      </ion-icon>
+      Editar perfil
+    </ion-button>
+<!-- Esta parte consiste en los botones de guardar y cancelar cambios -->
+    <ion-button
+      *ngIf="editando"
+      expand="block"
+      class="guardar"
+      (click)="guardarPerfil()">
+      <ion-icon
+        slot="start"
+        name="save-outline">
+      </ion-icon>
+      Guardar cambios
+    </ion-button>
+    <!-- Cancelar -->
+    <ion-button
+      *ngIf="editando"
+      expand="block"
+      fill="outline"
+      class="cancelar"
+      (click)="cancelarEdicion()">
+      <ion-icon
+        slot="start"
+        name="close-outline">
+      </ion-icon>
+      Cancelar
+    </ion-button>
+  </div>
 </ion-content>

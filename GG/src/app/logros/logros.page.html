@@ -1,13 +1,52 @@
-<ion-header [translucent]="true">
+<ion-header>
   <ion-toolbar>
-    <ion-title>logros</ion-title>
+    <!-- Esta es la pagina de logros -->
+    <ion-title>Logros</ion-title>
   </ion-toolbar>
 </ion-header>
-
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">logros</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<!-- Esta sección muestra un resumen de los logros del usuario,
+  incluyendo el número de logros completados y el progreso en porcentaje -->
+<ion-content>
+  <div class="contenedor">
+    <div class="resumen">
+      <div class="trofeo">
+        <ion-icon name="trophy-outline"></ion-icon>
+      </div>
+      <h1>Mis logros</h1>
+      <p>
+        {{ logrosCompletados }} de {{ logros.length }} desbloqueados
+      </p>
+      <!-- Esta barra de progreso muestra visualmente el porcentaje de logros completados -->
+      <ion-progress-bar
+        [value]="progreso">
+      </ion-progress-bar>
+      <span class="porcentaje">
+        {{ progreso * 100 | number:'1.0-0' }}%
+      </span>
+    </div>
+    <!-- Esta sección lista todos los logros del usuario, mostrando un icono, título, descripción y estado de cada logro -->
+    <h2>Tus logros</h2>
+    <div
+      class="logro"
+      *ngFor="let logro of logros"
+      [class.bloqueado]="!logro.completado"
+    >
+      <div class="icono">
+        <ion-icon
+          [name]="logro.completado ? logro.icono : 'lock-closed-outline'">
+        </ion-icon>
+      </div>
+      <div class="informacion">
+        <h3>{{ logro.titulo }}</h3>
+        <p>
+          {{ logro.descripcion }}
+        </p>
+      </div>
+      <div
+        class="estado"
+        *ngIf="logro.completado">
+        ✓
+      </div>
+    </div>
+  </div>
 </ion-content>
