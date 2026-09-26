@@ -1,0 +1,66 @@
+.cronometro {
+  --border-radius: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.miniatura {
+  --size: 48px;
+  --border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+
+  img {
+    object-fit: contain;
+  }
+
+  ion-icon {
+    font-size: 22px;
+    color: var(--ion-color-primary);
+  }
+}
+
+// Una fila por serie: # | kg | reps | RPE | borrar
+.serie {
+  display: grid;
+  grid-template-columns: 20px 1fr 1fr 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+
+  ion-input,
+  ion-select {
+    --padding-start: 8px;
+    min-height: 40px;
+    text-align: center;
+  }
+}
+
+.cabecera {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ion-color-medium);
+}
+
+.numero {
+  font-weight: 600;
+}
+
+.vacio {
+  margin: 32px 24px;
+  text-align: center;
+}
+
+.nota {
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+ion-footer ion-button {
+  --border-radius: 14px;
+  height: 46px;
+  font-weight: 600;
+}

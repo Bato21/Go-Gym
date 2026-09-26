@@ -1,17 +1,174 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>
-      Entrenamiento
-    </ion-title>
+    <ion-title>{{ enCurso ? enCurso.nombre : 'Entrenamiento' }}</ion-title>
+    @if (enCurso) {
+      <ion-buttons slot="end">
+        <ion-button fill="outline" size="small" class="cronometro">
+          <ion-icon slot="start" name="timer-outline"></ion-icon>
+          {{ cronometro }}
+        </ion-button>
+      </ion-buttons>
+    }
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Entrenamiento</ion-title>
-    </ion-toolbar>
-  </ion-header>
 
-  <app-explore-container name="Entrenamiento"></app-explore-container>
+  @if (enCurso; as sesion) {
+
+    <!-- Entrenamiento en curso: un card por ejercicio -->
+    @for (ejercicio of sesion.ejercicios; track ejercicio.id) {
+      <ion-card>
+        <ion-item lines="none">
+          <ion-thumbnail slot="start" class="miniatura">
+            @if (ejercicio.imagen) {
+              <img [src]="urlImagen(ejercicio)" [alt]="ejercicio.nombre" loading="lazy" />
+            } @else {
+              <ion-icon name="barbell"></ion-icon>
+            }
+          </ion-thumbnail>
+          <ion-label>
+            <h2>{{ ejercicio.nombre }}</h2>
+            <p>{{ ejercicio.grupo }}</p>
+          </ion-label>
+          <ion-button slot="end" fill="clear" color="danger" aria-label="Quitar ejercicio" (click)="quitarEjercicio(ejercicio)">
+            <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+          </ion-button>
+        </ion-item>
+
+        <ion-card-content>
+          <!-- Tabla de series: # | kg | reps | RPE | borrar -->
+          <div class="serie cabecera">
+            <span>#</span><span>kg</span><span>Reps</span><span>RPE</span><span></span>
+          </div>
+
+          @for (serie of ejercicio.series; track $index; let i = $index) {
+            <div class="serie">
+              <span class="numero">{{ i + 1 }}</span>
+              <ion-input
+                type="number"
+                fill="outline"
+                inputmode="decimal"
+                placeholder="0"
+                aria-label="Peso en kg"
+                [(ngModel)]="serie.kg"
+                (ionChange)="guardar()"
+              ></ion-input>
+              <ion-input
+                type="number"
+                fill="outline"
+                inputmode="numeric"
+                placeholder="0"
+                aria-label="Repeticiones"
+                [(ngModel)]="serie.reps"
+                (ionChange)="guardar()"
+              ></ion-input>
+              <ion-select
+                fill="outline"
+                interface="popover"
+                placeholder="–"
+                aria-label="Esfuerzo percibido"
+                [(ngModel)]="serie.rpe"
+                (ionChange)="guardar()"
+              >
+                @for (valor of escalaRpe; track valor) {
+                  <ion-select-option [value]="valor">{{ valor }}</ion-select-option>
+                }
+              </ion-select>
+              <ion-button fill="clear" color="medium" aria-label="Quitar serie" (click)="quitarSerie(ejercicio, i)">
+                <ion-icon slot="icon-only" name="close"></ion-icon>
+              </ion-button>
+            </div>
+          }
+
+          <ion-button expand="block" fill="clear" size="small" (click)="agregarSerie(ejercicio)">
+            <ion-icon slot="start" name="add"></ion-icon>
+            Añadir serie
+          </ion-button>
+        </ion-card-content>
+      </ion-card>
+    } @empty {
+      <ion-text color="medium">
+        <p class="vacio">Todavía no hay ejercicios. Añade el primero desde el catálogo.</p>
+      </ion-text>
+    }
+
+    <div class="ion-padding-horizontal">
+      <ion-button expand="block" fill="outline" (click)="abrirCatalogo()">
+        <ion-icon slot="start" name="add"></ion-icon>
+        Añadir ejercicio
+      </ion-button>
+      <ion-text color="medium">
+        <p class="nota">RPE = esfuerzo percibido: 1 muy fácil, 10 al fallo.</p>
+      </ion-text>
+      <ion-button expand="block" fill="clear" color="danger" (click)="confirmarDescartar()">
+        Descartar entrenamiento
+      </ion-button>
+    </div>
+
+  } @else {
+
+    <!-- Sin entrenamiento en curso: empezar uno nuevo -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-subtitle>Nuevo entrenamiento</ion-card-subtitle>
+        <ion-card-title>¿Qué toca hoy?</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item lines="none" class="ion-no-padding">
+          <ion-input
+            label="Nombre"
+            labelPlacement="stacked"
+            placeholder="Entrenamiento libre"
+            [(ngModel)]="nombreNuevo"
+          ></ion-input>
+        </ion-item>
+        <ion-button expand="block" (click)="empezar()">
+          <ion-icon slot="start" name="play"></ion-icon>
+          Empezar entrenamiento
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Historial -->
+    <ion-list>
+      <ion-list-header>
+        <ion-label>Entrenamientos anteriores</ion-label>
+      </ion-list-header>
+      @for (sesion of historial; track sesion.id) {
+        <ion-item>
+          <ion-label>
+            <h2>{{ sesion.nombre }}</h2>
+            <p>{{ fecha(sesion) }} · {{ duracion(sesion) }} · {{ sesion.ejercicios.length }} ejercicios</p>
+          </ion-label>
+          <ion-note slot="end">{{ volumen(sesion).toLocaleString('es-CL') }} kg</ion-note>
+        </ion-item>
+      } @empty {
+        <ion-item lines="none">
+          <ion-label color="medium">Aún no terminas ningún entrenamiento.</ion-label>
+        </ion-item>
+      }
+    </ion-list>
+  }
 </ion-content>
+
+@if (enCurso) {
+  <ion-footer>
+    <ion-toolbar>
+      <ion-button expand="block" [disabled]="!puedeTerminar" (click)="confirmarTerminar()">
+        <ion-icon slot="start" name="checkmark"></ion-icon>
+        Terminar entrenamiento
+      </ion-button>
+    </ion-toolbar>
+  </ion-footer>
+}
+
+<!-- Catálogo de ejercicios (el componente selector) -->
+<ion-modal [isOpen]="modalCatalogoAbierto" (didDismiss)="cerrarCatalogo()">
+  <ng-template>
+    <app-selector-ejercicio
+      (seleccionar)="agregarEjercicio($event)"
+      (cerrar)="cerrarCatalogo()"
+    ></app-selector-ejercicio>
+  </ng-template>
+</ion-modal>

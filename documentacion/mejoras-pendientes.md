@@ -56,5 +56,5 @@ de este cambio.
   4 kB de error. `inicio.page.scss` quedó justo debajo del límite; si crece hay que mover lo común
   a `theme/variables.scss` o subir el presupuesto de forma consciente.
 - **`index.html`** todavía dice `<title>Ionic App</title>` y usa el favicon por defecto de Ionic.
-- **Lint**: `calorias`, `logros` y `perfil` fallan con `no-empty-lifecycle-method` (son stubs del CLI).
-  Se arregla solo cuando se implementen esas vistas.
+- **Lint**: `logros` y `perfil` fallan con `prefer-control-flow` (usan `*ngIf` / `*ngFor` en vez de
+  `@if` / `@for`) y `logros` además con `no-empty-lifecycle-method`. `calorias` ya pasa.

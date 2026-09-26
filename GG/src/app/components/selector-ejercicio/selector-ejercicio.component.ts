@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, output, viewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, output, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   InfiniteScrollCustomEvent,
@@ -37,6 +37,9 @@ const TAMANO_PAGINA = 30;
   selector: 'app-selector-ejercicio',
   templateUrl: './selector-ejercicio.component.html',
   styleUrls: ['./selector-ejercicio.component.scss'],
+  // Dentro de un ion-modal, la clase ion-page hace que header + content
+  // ocupen toda la ventana. Sin ella la lista queda cortada.
+  host: { class: 'ion-page' },
   imports: [
     FormsModule,
     IonButton,
@@ -79,6 +82,7 @@ export class SelectorEjercicioComponent implements OnInit {
 
   private todos: EjercicioCatalogo[] = [];
   private readonly catalogo = inject(CatalogoEjerciciosService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /** Referencia al contenido para poder hacer scroll al principio de la lista. */
   private readonly contenido = viewChild(IonContent);
@@ -104,10 +108,13 @@ export class SelectorEjercicioComponent implements OnInit {
         this.todos = lista;
         this.aplicarFiltros();
         this.cargando = false;
+        // La app no usa zone.js: una respuesta HTTP no repinta sola la vista.
+        this.cdr.markForCheck();
       },
       error: () => {
         this.error = true;
         this.cargando = false;
+        this.cdr.markForCheck();
       },
     });
   }

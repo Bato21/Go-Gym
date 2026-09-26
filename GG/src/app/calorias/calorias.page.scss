@@ -1,0 +1,106 @@
+.navegacion-dia,
+.metricas,
+.macro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.navegacion-dia {
+  padding: 4px 8px;
+}
+
+.anillo {
+  position: relative;
+  width: 190px;
+  margin: 8px auto 16px;
+
+  svg {
+    display: block;
+    transform: rotate(-90deg); // el trazo empieza arriba
+  }
+
+  circle {
+    fill: none;
+    stroke-width: 10;
+  }
+
+  .fondo {
+    stroke: rgba(var(--ion-color-primary-rgb), 0.15);
+  }
+
+  .avance {
+    stroke: var(--ion-color-primary);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.4s;
+  }
+
+  .excedido {
+    stroke: var(--ion-color-danger);
+  }
+
+  .centro {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--ion-color-medium);
+  }
+
+  .valor {
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--ion-text-color);
+  }
+}
+
+.metricas {
+  padding: 0 16px;
+}
+
+.metrica {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--ion-card-background, var(--ion-color-step-50));
+
+  p {
+    margin: 0;
+  }
+
+  .etiqueta {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ion-color-medium);
+  }
+
+  .valor {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .quema {
+    color: var(--ion-color-primary);
+  }
+}
+
+.macro {
+  margin: 10px 0 6px;
+  font-size: 13px;
+}
+
+ion-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+}
+
+.nota {
+  margin: 8px 16px 24px;
+  font-size: 12px;
+}

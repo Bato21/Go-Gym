@@ -1,13 +1,193 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>calorias</ion-title>
+    <ion-title>Calorías</ion-title>
+    <ion-buttons slot="end">
+      <ion-button aria-label="Ajustes" (click)="ajustar()">
+        <ion-icon slot="icon-only" name="options-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">calorias</ion-title>
-    </ion-toolbar>
-  </ion-header>
+
+  <!-- Navegación por días -->
+  <div class="navegacion-dia">
+    <ion-button fill="clear" aria-label="Día anterior" (click)="cambiarDia(-1)">
+      <ion-icon slot="icon-only" name="chevron-back"></ion-icon>
+    </ion-button>
+    <strong>{{ tituloFecha }}</strong>
+    <ion-button fill="clear" aria-label="Día siguiente" [disabled]="esHoy" (click)="cambiarDia(1)">
+      <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
+    </ion-button>
+  </div>
+
+  <!-- Anillo: se llena con las calorías netas (ingesta - quema) sobre la meta -->
+  <div class="anillo">
+    <svg viewBox="0 0 120 120">
+      <circle class="fondo" cx="60" cy="60" r="52"></circle>
+      <circle
+        class="avance"
+        [class.excedido]="restantes < 0"
+        cx="60"
+        cy="60"
+        r="52"
+        [attr.stroke-dasharray]="circunferencia"
+        [attr.stroke-dashoffset]="desplazamientoAnillo"
+      ></circle>
+    </svg>
+    <div class="centro">
+      <span class="valor">{{ formatear(restantes < 0 ? -restantes : restantes) }}</span>
+      <span>{{ restantes < 0 ? 'kcal sobre la meta' : 'kcal restantes' }}</span>
+    </div>
+  </div>
+
+  <!-- Meta / Ingesta / Quema -->
+  <div class="metricas">
+    <div class="metrica">
+      <p class="etiqueta">Meta</p>
+      <p class="valor">{{ formatear(meta) }}</p>
+    </div>
+    <div class="metrica">
+      <p class="etiqueta">Ingesta</p>
+      <p class="valor">{{ formatear(ingesta) }}</p>
+    </div>
+    <div class="metrica">
+      <p class="etiqueta">Quema</p>
+      <p class="valor quema">{{ formatear(quema) }}</p>
+    </div>
+  </div>
+
+  <!-- Macros -->
+  <ion-card>
+    <ion-card-content>
+      @for (macro of macros; track macro.nombre) {
+        <div class="macro">
+          <span>{{ macro.nombre }}</span>
+          <span>{{ macro.actual }} / {{ macro.meta }} g</span>
+        </div>
+        <ion-progress-bar [value]="macro.actual / macro.meta"></ion-progress-bar>
+      }
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Comidas (ingesta) -->
+  <ion-list>
+    <ion-list-header>
+      <ion-label>Comidas</ion-label>
+    </ion-list-header>
+
+    @for (comida of dia.comidas; track comida.id) {
+      <ion-item>
+        <ion-icon slot="start" name="restaurant" color="primary"></ion-icon>
+        <ion-label>
+          <h2>{{ comida.nombre }}</h2>
+          <p>P {{ comida.proteina }} g · C {{ comida.carbohidratos }} g · G {{ comida.grasas }} g</p>
+        </ion-label>
+        <ion-note slot="end">{{ formatear(comida.kcal) }} kcal</ion-note>
+        <ion-button slot="end" fill="clear" color="danger" aria-label="Borrar comida" (click)="eliminarComida(comida)">
+          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+        </ion-button>
+      </ion-item>
+    } @empty {
+      <ion-item lines="none">
+        <ion-label color="medium">Todavía no registras comidas este día.</ion-label>
+      </ion-item>
+    }
+
+    <ion-item button="true" detail="false" lines="none" (click)="nuevaComida()">
+      <ion-icon slot="start" name="add" color="primary"></ion-icon>
+      <ion-label color="primary">Añadir comida</ion-label>
+    </ion-item>
+  </ion-list>
+
+  <!-- Actividad (quema) -->
+  <ion-list>
+    <ion-list-header>
+      <ion-label>Actividad</ion-label>
+    </ion-list-header>
+
+    @for (actividad of dia.actividades; track actividad.id) {
+      <ion-item>
+        <ion-icon slot="start" name="flame" color="primary"></ion-icon>
+        <ion-label>
+          <h2>{{ actividad.nombre }}</h2>
+          <p>{{ actividad.minutos }} min · MET {{ actividad.met }}</p>
+        </ion-label>
+        <ion-note slot="end">{{ kcalActividad(actividad) }} kcal</ion-note>
+        <ion-button slot="end" fill="clear" color="danger" aria-label="Borrar actividad" (click)="eliminarActividad(actividad)">
+          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+        </ion-button>
+      </ion-item>
+    } @empty {
+      <ion-item lines="none">
+        <ion-label color="medium">Sin actividad registrada este día.</ion-label>
+      </ion-item>
+    }
+
+    <ion-item button="true" detail="false" lines="none" (click)="nuevaActividad()">
+      <ion-icon slot="start" name="add" color="primary"></ion-icon>
+      <ion-label color="primary">Añadir actividad</ion-label>
+    </ion-item>
+  </ion-list>
+
+  <ion-text color="medium">
+    <p class="nota">
+      La quema es una estimación: MET × {{ pesoKg }} kg × horas. No es un dato exacto.
+    </p>
+  </ion-text>
 </ion-content>
+
+<!-- Formulario: añadir comida -->
+<ion-modal [isOpen]="modalComidaAbierto" (didDismiss)="cerrarModalComida()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Añadir comida</ion-title>
+        <ion-buttons slot="end">
+          <ion-button aria-label="Cerrar" (click)="cerrarModalComida()">
+            <ion-icon slot="icon-only" name="close"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding">
+      <ion-list>
+        <ion-item>
+          <ion-select label="Comida" [(ngModel)]="borradorComida.nombre">
+            @for (tipo of tiposComida; track tipo) {
+              <ion-select-option [value]="tipo">{{ tipo }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+        <ion-item>
+          <ion-input type="number" label="Calorías (kcal)" labelPlacement="stacked" [(ngModel)]="borradorComida.kcal"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input type="number" label="Proteína (g)" labelPlacement="stacked" [(ngModel)]="borradorComida.proteina"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input type="number" label="Carbohidratos (g)" labelPlacement="stacked" [(ngModel)]="borradorComida.carbohidratos"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input type="number" label="Grasas (g)" labelPlacement="stacked" [(ngModel)]="borradorComida.grasas"></ion-input>
+        </ion-item>
+      </ion-list>
+
+      <ion-button expand="block" [disabled]="!(borradorComida.kcal > 0)" (click)="guardarComida()">
+        Guardar comida
+      </ion-button>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- Elegir actividad: el mismo selector de ejercicios que usa Rutina -->
+<ion-modal [isOpen]="modalActividadAbierto" (didDismiss)="cerrarModalActividad()">
+  <ng-template>
+    <app-selector-ejercicio
+      (seleccionar)="elegirActividad($event)"
+      (cerrar)="cerrarModalActividad()"
+    ></app-selector-ejercicio>
+  </ng-template>
+</ion-modal>
