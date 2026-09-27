@@ -26,6 +26,7 @@ import {
 import { addIcons } from 'ionicons';
 import {
   add,
+  barbell,
   chevronBack,
   chevronForward,
   close,
@@ -37,6 +38,7 @@ import {
 
 import { SelectorEjercicioComponent } from '../components/selector-ejercicio/selector-ejercicio.component';
 import { EjercicioCatalogo } from '../models/ejercicio-catalogo';
+import { CLAVE_HISTORIAL, Sesion } from '../models/sesion';
 
 interface Comida {
   id: number;
@@ -62,6 +64,9 @@ interface RegistroDia {
 
 /** Todo lo de esta vista se guarda en una sola clave de localStorage. */
 const CLAVE_STORAGE = 'caloriasUsuario';
+
+/** MET para ejercicios guardados antes de que la sesión registrara el MET. */
+const MET_POR_DEFECTO = 5;
 
 @Component({
   selector: 'app-calorias',
@@ -105,6 +110,9 @@ export class CaloriasPage {
   /** Un registro por día, con clave "2026-09-26". */
   registros: Record<string, RegistroDia> = {};
 
+  /** Entrenamientos terminados (los escribe la pestaña Entrenamiento). */
+  entrenamientos: Sesion[] = [];
+
   /** Día que se está mirando. Empieza en hoy y se mueve con las flechas. */
   fecha = new Date();
 
@@ -122,6 +130,7 @@ export class CaloriasPage {
   constructor() {
     addIcons({
       add,
+      barbell,
       chevronBack,
       chevronForward,
       close,
@@ -131,6 +140,13 @@ export class CaloriasPage {
       trashOutline,
     });
     this.cargar();
+  }
+
+  /** Se relee al entrar a la pestaña, por si se terminó un entrenamiento. */
+  ionViewWillEnter() {
+    const historial = localStorage.getItem(CLAVE_HISTORIAL);
+    this.entrenamientos = historial ? JSON.parse(historial) : [];
+    this.cdr.markForCheck();
   }
 
   // ---------------------------------------------------------------- lecturas
@@ -143,8 +159,30 @@ export class CaloriasPage {
     return this.dia.comidas.reduce((suma, c) => suma + c.kcal, 0);
   }
 
+  /**
+   * Entrenamientos que empezaron este día, vistos como actividades.
+   * Minutos = duración real; MET = promedio de sus ejercicios, ponderado por series.
+   */
+  get actividadesEntrenamiento(): Actividad[] {
+    return this.entrenamientos
+      .filter((s) => s.fin && this.clave(new Date(s.inicio)) === this.claveDia)
+      .map((s) => {
+        const series = s.ejercicios.reduce((suma, e) => suma + e.series.length, 0);
+        const metPorSerie = s.ejercicios.reduce(
+          (suma, e) => suma + (e.met ?? MET_POR_DEFECTO) * e.series.length,
+          0
+        );
+        return {
+          id: s.id,
+          nombre: s.nombre,
+          met: series ? Math.round((metPorSerie / series) * 10) / 10 : MET_POR_DEFECTO,
+          minutos: Math.round((Date.parse(s.fin!) - Date.parse(s.inicio)) / 60000),
+        };
+      });
+  }
+
   get quema(): number {
-    return this.dia.actividades.reduce(
+    return [...this.dia.actividades, ...this.actividadesEntrenamiento].reduce(
       (suma, a) => suma + this.kcalActividad(a),
       0
     );

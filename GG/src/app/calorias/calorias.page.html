@@ -107,6 +107,17 @@
       <ion-label>Actividad</ion-label>
     </ion-list-header>
 
+    @for (actividad of actividadesEntrenamiento; track actividad.id) {
+      <ion-item>
+        <ion-icon slot="start" name="barbell" color="primary"></ion-icon>
+        <ion-label>
+          <h2>{{ actividad.nombre }}</h2>
+          <p>{{ actividad.minutos }} min · MET {{ actividad.met }} · desde Entrenamiento</p>
+        </ion-label>
+        <ion-note slot="end">{{ kcalActividad(actividad) }} kcal</ion-note>
+      </ion-item>
+    }
+
     @for (actividad of dia.actividades; track actividad.id) {
       <ion-item>
         <ion-icon slot="start" name="flame" color="primary"></ion-icon>
@@ -119,7 +130,9 @@
           <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
         </ion-button>
       </ion-item>
-    } @empty {
+    }
+
+    @if (!dia.actividades.length && !actividadesEntrenamiento.length) {
       <ion-item lines="none">
         <ion-label color="medium">Sin actividad registrada este día.</ion-label>
       </ion-item>

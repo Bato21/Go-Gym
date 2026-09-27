@@ -32,37 +32,10 @@ import { add, barbell, checkmark, close, play, timerOutline, trashOutline } from
 
 import { SelectorEjercicioComponent } from '../components/selector-ejercicio/selector-ejercicio.component';
 import { EjercicioCatalogo } from '../models/ejercicio-catalogo';
+import { CLAVE_HISTORIAL, EjercicioSesion, Serie, Sesion } from '../models/sesion';
 import { CatalogoEjerciciosService } from '../services/catalogo-ejercicios.service';
 
-/** Una serie hecha. null = el usuario todavía no la rellenó. */
-interface Serie {
-  kg: number | null;
-  reps: number | null;
-  /** Esfuerzo percibido (RPE): 1 = muy fácil, 10 = al fallo. */
-  rpe: number | null;
-}
-
-/** Un ejercicio del catálogo dentro del entrenamiento, con sus series. */
-interface EjercicioSesion {
-  id: number;
-  catalogoId: string;
-  nombre: string;
-  grupo: string;
-  imagen: string | null;
-  series: Serie[];
-}
-
-interface Sesion {
-  id: number;
-  nombre: string;
-  /** Fechas en texto ISO para poder guardarlas en localStorage. */
-  inicio: string;
-  fin?: string;
-  ejercicios: EjercicioSesion[];
-}
-
 const CLAVE_EN_CURSO = 'entrenamientoEnCurso';
-const CLAVE_HISTORIAL = 'entrenamientosTerminados';
 
 @Component({
   selector: 'app-entrenamiento',
@@ -254,6 +227,7 @@ export class EntrenamientoPage implements OnDestroy {
       nombre: elegido.nombre,
       grupo: elegido.grupo,
       imagen: elegido.imagen,
+      met: elegido.met,
       series: [this.serieVacia()],
     });
     this.guardar();
