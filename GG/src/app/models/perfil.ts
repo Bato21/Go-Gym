@@ -15,10 +15,10 @@ export interface Perfil {
   metasMacros: { proteina: number; carbohidratos: number; grasas: number };
 }
 
-/** Clave de localStorage del perfil (la misma que usaba la vista Perfil). */
+/** Clave de localStorage del perfil de antes de las cuentas. Solo para importarlo. */
 export const CLAVE_PERFIL = 'perfilUsuario';
 
-/** Valores de partida: todo se puede cambiar desde Perfil o Calorías. */
+/** Valores de partida de una cuenta nueva: todo se puede cambiar desde Perfil o Calorías. */
 export const PERFIL_INICIAL: Perfil = {
   nombre: '',
   apellido: '',

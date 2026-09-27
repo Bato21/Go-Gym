@@ -3,7 +3,15 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  /**
+   * Proyecto Supabase. La publishable key es pública por diseño: lo que protege
+   * los datos es RLS. Nunca poner aquí la secret key ni la service_role.
+   */
+  supabase: {
+    url: 'https://rshbdnqurzitovdfozdp.supabase.co',
+    publishableKey: 'sb_publishable_gDLkxeaw9xWLVJxTMgMZIg_nKQdBArv',
+  },
 };
 
 /*

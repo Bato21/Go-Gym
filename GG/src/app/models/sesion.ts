@@ -25,12 +25,15 @@ export interface Sesion {
   nombre: string;
   /** Rutina de la que salió; falta en entrenamientos libres. */
   rutinaId?: number;
-  /** Fechas en texto ISO para poder guardarlas en localStorage. */
+  /** Fechas en texto ISO (así las guarda y devuelve Supabase). */
   inicio: string;
   fin?: string;
   ejercicios: EjercicioSesion[];
 }
 
-/** Claves de localStorage. Solo las usa SesionesService. */
+/**
+ * Claves de localStorage. El historial ya vive en la cuenta: CLAVE_HISTORIAL solo
+ * sirve para importar el de antes. CLAVE_EN_CURSO lleva detrás el id de la cuenta.
+ */
 export const CLAVE_HISTORIAL = 'entrenamientosTerminados';
 export const CLAVE_EN_CURSO = 'entrenamientoEnCurso';

@@ -37,38 +37,14 @@ import {
 } from 'ionicons/icons';
 
 import { SelectorEjercicioComponent } from '../components/selector-ejercicio/selector-ejercicio.component';
+import { Actividad, Comida, RegistroDia } from '../models/calorias';
 import { EjercicioCatalogo } from '../models/ejercicio-catalogo';
 import { MET_POR_DEFECTO } from '../models/rutina';
 import { Sesion } from '../models/sesion';
+import { CaloriasService } from '../services/calorias.service';
 import { PerfilService } from '../services/perfil.service';
 import { SesionesService } from '../services/sesiones.service';
-import { escribir, leer } from '../utils/almacenamiento';
 import { claveDia as clave } from '../utils/fechas';
-
-interface Comida {
-  id: number;
-  nombre: string;
-  kcal: number;
-  proteina: number;
-  carbohidratos: number;
-  grasas: number;
-}
-
-/** Ejercicio hecho en el día. Las kcal no se guardan: se calculan con el MET. */
-interface Actividad {
-  id: number;
-  nombre: string;
-  met: number;
-  minutos: number;
-}
-
-interface RegistroDia {
-  comidas: Comida[];
-  actividades: Actividad[];
-}
-
-/** Comidas y actividades de cada día. La meta y el peso viven en el perfil. */
-const CLAVE_STORAGE = 'caloriasUsuario';
 
 @Component({
   selector: 'app-calorias',
@@ -102,9 +78,6 @@ const CLAVE_STORAGE = 'caloriasUsuario';
 export class CaloriasPage {
   tiposComida = ['Desayuno', 'Almuerzo', 'Once', 'Cena', 'Snack'];
 
-  /** Un registro por día, con clave "2026-09-26". */
-  registros: Record<string, RegistroDia> = {};
-
   /** Día que se está mirando. Empieza en hoy y se mueve con las flechas. */
   fecha = new Date();
 
@@ -120,6 +93,7 @@ export class CaloriasPage {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly perfil = inject(PerfilService);
   private readonly sesiones = inject(SesionesService);
+  private readonly calorias = inject(CaloriasService);
 
   constructor() {
     addIcons({
@@ -133,7 +107,6 @@ export class CaloriasPage {
       restaurant,
       trashOutline,
     });
-    this.cargar();
   }
 
   // ---------------------------------------------------------------- lecturas
@@ -156,8 +129,9 @@ export class CaloriasPage {
     return this.sesiones.historial();
   }
 
+  /** Comidas y actividades del día mostrado (las guarda CaloriasService). */
   get dia(): RegistroDia {
-    return this.registros[this.claveDia] ?? { comidas: [], actividades: [] };
+    return this.calorias.registros()[this.claveDia] ?? { comidas: [], actividades: [] };
   }
 
   get ingesta(): number {
@@ -290,14 +264,14 @@ export class CaloriasPage {
       },
     ];
 
-    this.guardar();
+    this.guardar(registro);
     this.cerrarModalComida();
   }
 
   eliminarComida(comida: Comida) {
     const registro = this.registroEditable();
     registro.comidas = registro.comidas.filter((c) => c.id !== comida.id);
-    this.guardar();
+    this.guardar(registro);
   }
 
   cerrarModalComida() {
@@ -341,7 +315,7 @@ export class CaloriasPage {
     registro.actividades = registro.actividades.filter(
       (a) => a.id !== actividad.id
     );
-    this.guardar();
+    this.guardar(registro);
   }
 
   cerrarModalActividad() {
@@ -397,27 +371,22 @@ export class CaloriasPage {
       ...registro.actividades,
       { id: Date.now(), nombre: ejercicio.nombre, met: ejercicio.met, minutos },
     ];
-    this.guardar();
+    this.guardar(registro);
   }
 
   private get claveDia(): string {
     return clave(this.fecha);
   }
 
-  /** El registro del día mostrado; lo crea si ese día todavía no tenía nada. */
+  /** Copia del registro del día mostrado, para cambiarla y guardarla entera. */
   private registroEditable(): RegistroDia {
-    this.registros[this.claveDia] ??= { comidas: [], actividades: [] };
-    return this.registros[this.claveDia];
+    return { ...this.dia };
   }
 
   /** Guarda y repinta: la app no usa zone.js, y los cambios desde alertas no se verían. */
-  private guardar() {
+  private guardar(registro: RegistroDia) {
+    this.calorias.guardarDia(this.claveDia, registro);
     this.cdr.markForCheck();
-    escribir(CLAVE_STORAGE, { registros: this.registros });
-  }
-
-  private cargar() {
-    this.registros = leer<{ registros?: Record<string, RegistroDia> }>(CLAVE_STORAGE, {}).registros ?? {};
   }
 
   private comidaVacia(): Omit<Comida, 'id'> {

@@ -6,14 +6,29 @@ Ideas detectadas mientras se acercaban **Inicio** y **Rutina** al mockup
 ## Hecho: datos centralizados
 
 Los puntos 1 a 3 de la versión anterior de este documento ya están resueltos. Ninguna vista
-guarda datos por su cuenta: todas leen de tres servicios en `GG/src/app/services/`, que
-persisten en `localStorage` y usan signals para que cada pestaña se repinte sola (la app no usa zone.js).
+guarda datos por su cuenta: todas leen de los servicios en `GG/src/app/services/`, que
+usan signals para que cada pestaña se repinte sola (la app no usa zone.js).
 
 | Servicio | Qué guarda | Quién lo usa |
 |---|---|---|
 | `PerfilService` | Nombre, objetivo, peso, días y hora de entrenamiento, meta de calorías y macros, rutina favorita | Inicio, Perfil, Calorías, Rutina, Logros |
 | `RutinasService` | Rutinas y sus ejercicios, y la rotación ("qué toca") | Rutina, Inicio, Entrenamiento, Perfil |
 | `SesionesService` | Entrenamiento en curso, historial, racha, totales por semana | Entrenamiento, Inicio, Calorías, Perfil, Logros |
+| `CaloriasService` | Comidas y actividades de cada día | Calorías |
+
+## Hecho: cuentas con Supabase
+
+Cada usuario entra con correo y contraseña (pantalla `login`, Supabase Auth) y sus datos se
+guardan en su cuenta, no en el dispositivo:
+
+- Tablas `perfiles`, `rutinas`, `sesiones` y `registros_calorias`, con RLS: cada cuenta solo
+  lee y escribe sus filas. El esquema está en `supabase/migrations/`.
+- `DatosUsuarioService` carga todo al entrar; el guard de las pestañas espera a que termine.
+- Los servicios cambian su signal al instante y suben el cambio en segundo plano, en orden
+  (`SupabaseService.guardar`). Si falla, se muestra un aviso.
+- El entrenamiento en curso se queda en `localStorage` (una clave por cuenta) hasta terminarlo.
+- La primera vez que una cuenta entra, se suben los datos que ese dispositivo tenía guardados
+  de antes; si no había, recibe las rutinas de ejemplo.
 
 Consecuencias visibles:
 

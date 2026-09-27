@@ -31,11 +31,13 @@ import {
   starOutline,
   saveOutline,
   closeOutline,
-  scaleOutline
+  scaleOutline,
+  logOutOutline
 } from 'ionicons/icons';
 
 import { PERFIL_INICIAL, Perfil } from '../models/perfil';
 import { Rutina } from '../models/rutina';
+import { AuthService } from '../services/auth.service';
 import { PerfilService } from '../services/perfil.service';
 import { RutinasService } from '../services/rutinas.service';
 import { SesionesService } from '../services/sesiones.service';
@@ -74,6 +76,10 @@ export class PerfilPage {
   private readonly perfilService = inject(PerfilService);
   private readonly rutinas = inject(RutinasService);
   private readonly sesiones = inject(SesionesService);
+  private readonly auth = inject(AuthService);
+
+  /** Correo de la cuenta con la que se entró. */
+  readonly email = this.auth.email;
 
   /** Opciones del selector de días (el índice es el día: 0 = lunes). */
   readonly nombresDias = NOMBRES_DIAS;
@@ -97,7 +103,8 @@ export class PerfilPage {
       starOutline,
       saveOutline,
       closeOutline,
-      scaleOutline
+      scaleOutline,
+      logOutOutline
     });
 
   }
@@ -197,6 +204,14 @@ export class PerfilPage {
   cancelarEdicion() {
 
     this.editando = false;
+
+  }
+
+
+  /** Sube lo pendiente y vuelve a Login; los datos se quedan en la cuenta. */
+  cerrarSesion() {
+
+    this.auth.cerrarSesion().catch((error) => console.error(error));
 
   }
 

@@ -23,7 +23,7 @@ export interface Rutina {
   ejercicios: Ejercicio[];
 }
 
-/** Clave de localStorage de las rutinas. */
+/** Clave de localStorage de las rutinas de antes de las cuentas. Solo para importarlas. */
 export const CLAVE_RUTINAS = 'rutinasUsuario';
 
 /** MET para ejercicios sin dato del catálogo (fuerza moderada). */
@@ -51,7 +51,7 @@ export function metRutina(rutina: Rutina): number {
   return total / series;
 }
 
-/** Rutinas de ejemplo para la primera vez que se abre la app. Enlazadas al catálogo. */
+/** Rutinas de ejemplo de una cuenta nueva. Enlazadas al catálogo. */
 export const RUTINAS_INICIALES: Rutina[] = [
   {
     id: 1,

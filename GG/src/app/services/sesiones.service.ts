@@ -1,19 +1,38 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { Rutina, cargaEnKg } from '../models/rutina';
-import { CLAVE_EN_CURSO, CLAVE_HISTORIAL, Serie, Sesion } from '../models/sesion';
+import { CLAVE_EN_CURSO, EjercicioSesion, Serie, Sesion } from '../models/sesion';
 import { escribir, leer } from '../utils/almacenamiento';
 import { claveDia, inicioSemana, sumarDias } from '../utils/fechas';
+import { SupabaseService } from './supabase.service';
+
+/** Fila de la tabla sesiones (ver supabase/migrations). */
+interface FilaSesion {
+  user_id: string;
+  id: number;
+  nombre: string;
+  rutina_id: number | null;
+  inicio: string;
+  fin: string | null;
+  ejercicios: EjercicioSesion[];
+}
 
 /**
  * Entrenamientos: el que está en curso y el historial de los terminados.
  * Es la única fuente para Entrenamiento, Inicio, Calorías, Logros y Perfil.
  * Usa signals: la app no usa zone.js, y así cada vista se repinta sola.
+ *
+ * El historial vive en la tabla sesiones de Supabase. El entrenamiento en curso
+ * se edita con cada tecla, así que se queda en este dispositivo (localStorage,
+ * una clave por cuenta) hasta que se termina.
  */
 @Injectable({ providedIn: 'root' })
 export class SesionesService {
-  private readonly _historial = signal<Sesion[]>(leer(CLAVE_HISTORIAL, []));
-  private readonly _enCurso = signal<Sesion | null>(leer(CLAVE_EN_CURSO, null));
+  private readonly supabase = inject(SupabaseService);
+
+  private readonly _historial = signal<Sesion[]>([]);
+  private readonly _enCurso = signal<Sesion | null>(null);
+  private usuarioId: string | null = null;
 
   /** Entrenamientos terminados, el más reciente primero. */
   readonly historial = this._historial.asReadonly();
@@ -79,13 +98,13 @@ export class SesionesService {
       })),
     };
     this._enCurso.set(sesion);
-    this.guardar();
+    this.guardarLocal();
     return sesion;
   }
 
   /** La vista edita la sesión en curso en el sitio (ngModel); esto la persiste. */
   guardarEnCurso() {
-    escribir(CLAVE_EN_CURSO, this._enCurso());
+    this.guardarLocal();
   }
 
   /** Quita las series vacías y pasa la sesión al historial. */
@@ -102,13 +121,19 @@ export class SesionesService {
     const terminada: Sesion = { ...actual, fin: new Date().toISOString(), ejercicios };
     this._historial.update((historial) => [terminada, ...historial]);
     this._enCurso.set(null);
-    this.guardar();
+    this.guardarLocal();
+
+    const usuarioId = this.usuarioId;
+    if (usuarioId) {
+      const fila = aFila(usuarioId, terminada);
+      this.supabase.guardar(() => this.supabase.client.from('sesiones').upsert(fila));
+    }
     return terminada;
   }
 
   descartar() {
     this._enCurso.set(null);
-    this.guardar();
+    this.guardarLocal();
   }
 
   // --------------------------------------------------------------- lecturas
@@ -167,10 +192,75 @@ export class SesionesService {
     return racha;
   }
 
+  // ------------------------------------------------- cuenta (DatosUsuarioService)
+
+  async cargar(usuarioId: string): Promise<void> {
+    const { data, error } = await this.supabase.client
+      .from('sesiones')
+      .select('*')
+      .eq('user_id', usuarioId)
+      .order('inicio', { ascending: false })
+      .overrideTypes<FilaSesion[], { merge: false }>();
+    if (error) {
+      throw error;
+    }
+    this.usuarioId = usuarioId;
+    this._historial.set(data.map(aSesion));
+    this._enCurso.set(leer(claveEnCurso(usuarioId), null));
+  }
+
+  /** Sube el historial de una vez (primera vez que entra la cuenta). */
+  async importar(usuarioId: string, historial: Sesion[]): Promise<void> {
+    if (!historial.length) {
+      return;
+    }
+    const { error } = await this.supabase.client
+      .from('sesiones')
+      .upsert(historial.map((s) => aFila(usuarioId, s)));
+    if (error) {
+      throw error;
+    }
+  }
+
+  limpiar() {
+    this.usuarioId = null;
+    this._historial.set([]);
+    this._enCurso.set(null);
+  }
+
   // -------------------------------------------------------------- auxiliares
 
-  private guardar() {
-    escribir(CLAVE_EN_CURSO, this._enCurso());
-    escribir(CLAVE_HISTORIAL, this._historial());
+  private guardarLocal() {
+    if (this.usuarioId) {
+      escribir(claveEnCurso(this.usuarioId), this._enCurso());
+    }
   }
+}
+
+/** El entrenamiento en curso de cada cuenta va en su propia clave. */
+export function claveEnCurso(usuarioId: string): string {
+  return `${CLAVE_EN_CURSO}:${usuarioId}`;
+}
+
+function aSesion(fila: FilaSesion): Sesion {
+  return {
+    id: fila.id,
+    nombre: fila.nombre,
+    rutinaId: fila.rutina_id ?? undefined,
+    inicio: fila.inicio,
+    fin: fila.fin ?? undefined,
+    ejercicios: fila.ejercicios,
+  };
+}
+
+function aFila(usuarioId: string, sesion: Sesion): FilaSesion {
+  return {
+    user_id: usuarioId,
+    id: sesion.id,
+    nombre: sesion.nombre,
+    rutina_id: sesion.rutinaId ?? null,
+    inicio: sesion.inicio,
+    fin: sesion.fin ?? null,
+    ejercicios: sesion.ejercicios ?? [],
+  };
 }

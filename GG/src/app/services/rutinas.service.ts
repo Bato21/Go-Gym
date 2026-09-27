@@ -1,8 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { CLAVE_RUTINAS, Ejercicio, RUTINAS_INICIALES, Rutina } from '../models/rutina';
-import { escribir, leer } from '../utils/almacenamiento';
+import { Ejercicio, Rutina } from '../models/rutina';
 import { SesionesService } from './sesiones.service';
+import { SupabaseService } from './supabase.service';
 
 /** Datos editables de una rutina (todo menos id y ejercicios). */
 export type DatosRutina = Pick<Rutina, 'nombre' | 'categoria' | 'nivel' | 'minutos'>;
@@ -10,16 +10,30 @@ export type DatosRutina = Pick<Rutina, 'nombre' | 'categoria' | 'nivel' | 'minut
 /** Datos editables de un ejercicio (todo menos el id). */
 export type DatosEjercicio = Omit<Ejercicio, 'id'>;
 
+/** Fila de la tabla rutinas (ver supabase/migrations). */
+interface FilaRutina {
+  user_id: string;
+  id: number;
+  nombre: string;
+  categoria: string;
+  nivel: string;
+  minutos: number;
+  ejercicios: Ejercicio[];
+}
+
 /**
- * Rutinas del usuario, guardadas en localStorage.
+ * Rutinas del usuario, guardadas en la tabla rutinas de Supabase.
  * Rutina las edita; Inicio, Entrenamiento y Perfil las leen.
- * Cada cambio crea arreglos nuevos para que los signals avisen a todas las vistas.
+ * Cada cambio crea arreglos nuevos para que los signals avisen a todas las vistas,
+ * y después sube a la cuenta solo la rutina que cambió.
  */
 @Injectable({ providedIn: 'root' })
 export class RutinasService {
   private readonly sesiones = inject(SesionesService);
+  private readonly supabase = inject(SupabaseService);
 
-  private readonly _rutinas = signal<Rutina[]>(leer(CLAVE_RUTINAS, RUTINAS_INICIALES));
+  private readonly _rutinas = signal<Rutina[]>([]);
+  private usuarioId: string | null = null;
 
   readonly rutinas = this._rutinas.asReadonly();
 
@@ -55,12 +69,14 @@ export class RutinasService {
 
   crear(datos: DatosRutina): Rutina {
     const nueva: Rutina = { id: this.siguienteIdRutina(), ...datos, ejercicios: [] };
-    this.guardar([...this._rutinas(), nueva]);
+    this._rutinas.set([...this._rutinas(), nueva]);
+    this.subir(nueva.id);
     return nueva;
   }
 
   actualizar(id: number, datos: DatosRutina) {
-    this.guardar(this._rutinas().map((r) => (r.id === id ? { ...r, ...datos } : r)));
+    this._rutinas.set(this._rutinas().map((r) => (r.id === id ? { ...r, ...datos } : r)));
+    this.subir(id);
   }
 
   duplicar(id: number): Rutina | undefined {
@@ -75,12 +91,19 @@ export class RutinasService {
       nombre: `${rutina.nombre} (copia)`,
       ejercicios: rutina.ejercicios.map((e) => ({ ...e, id: idEjercicio++ })),
     };
-    this.guardar([...this._rutinas(), copia]);
+    this._rutinas.set([...this._rutinas(), copia]);
+    this.subir(copia.id);
     return copia;
   }
 
   eliminar(id: number) {
-    this.guardar(this._rutinas().filter((r) => r.id !== id));
+    this._rutinas.set(this._rutinas().filter((r) => r.id !== id));
+    const usuarioId = this.usuarioId;
+    if (usuarioId) {
+      this.supabase.guardar(() =>
+        this.supabase.client.from('rutinas').delete().eq('user_id', usuarioId).eq('id', id)
+      );
+    }
   }
 
   // ------------------------------------------------------------- ejercicios
@@ -105,14 +128,59 @@ export class RutinasService {
     this.cambiarEjercicios(rutinaId, () => ejercicios);
   }
 
+  // ------------------------------------------------- cuenta (DatosUsuarioService)
+
+  async cargar(usuarioId: string): Promise<void> {
+    const { data, error } = await this.supabase.client
+      .from('rutinas')
+      .select('*')
+      .eq('user_id', usuarioId)
+      .order('id')
+      .overrideTypes<FilaRutina[], { merge: false }>();
+    if (error) {
+      throw error;
+    }
+    this.usuarioId = usuarioId;
+    this._rutinas.set(data.map(aRutina));
+  }
+
+  /** Sube varias rutinas de una vez (primera vez que entra la cuenta). */
+  async importar(usuarioId: string, rutinas: Rutina[]): Promise<void> {
+    if (!rutinas.length) {
+      return;
+    }
+    const { error } = await this.supabase.client
+      .from('rutinas')
+      .upsert(rutinas.map((r) => aFila(usuarioId, r)));
+    if (error) {
+      throw error;
+    }
+  }
+
+  limpiar() {
+    this.usuarioId = null;
+    this._rutinas.set([]);
+  }
+
   // -------------------------------------------------------------- auxiliares
 
   private cambiarEjercicios(rutinaId: number, cambio: (ejercicios: Ejercicio[]) => Ejercicio[]) {
-    this.guardar(
+    this._rutinas.set(
       this._rutinas().map((r) =>
         r.id === rutinaId ? { ...r, ejercicios: cambio(r.ejercicios) } : r
       )
     );
+    this.subir(rutinaId);
+  }
+
+  /** Guarda en la cuenta la rutina tal como quedó (insert o update). */
+  private subir(id: number) {
+    const rutina = this.obtener(id);
+    const usuarioId = this.usuarioId;
+    if (rutina && usuarioId) {
+      const fila = aFila(usuarioId, rutina);
+      this.supabase.guardar(() => this.supabase.client.from('rutinas').upsert(fila));
+    }
   }
 
   private siguienteIdRutina(): number {
@@ -122,9 +190,27 @@ export class RutinasService {
   private siguienteIdEjercicio(): number {
     return Math.max(0, ...this._rutinas().flatMap((r) => r.ejercicios).map((e) => e.id)) + 1;
   }
+}
 
-  private guardar(rutinas: Rutina[]) {
-    this._rutinas.set(rutinas);
-    escribir(CLAVE_RUTINAS, rutinas);
-  }
+function aRutina(fila: FilaRutina): Rutina {
+  return {
+    id: fila.id,
+    nombre: fila.nombre,
+    categoria: fila.categoria,
+    nivel: fila.nivel,
+    minutos: fila.minutos,
+    ejercicios: fila.ejercicios,
+  };
+}
+
+function aFila(usuarioId: string, rutina: Rutina): FilaRutina {
+  return {
+    user_id: usuarioId,
+    id: rutina.id,
+    nombre: rutina.nombre,
+    categoria: rutina.categoria ?? '',
+    nivel: rutina.nivel ?? '',
+    minutos: Math.max(0, Math.round(rutina.minutos) || 0),
+    ejercicios: rutina.ejercicios ?? [],
+  };
 }

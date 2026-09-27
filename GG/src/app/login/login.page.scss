@@ -1,0 +1,48 @@
+.contenedor {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+  max-width: 420px;
+  min-height: 100%;
+  margin: 0 auto;
+}
+
+.marca {
+  text-align: center;
+
+  ion-icon {
+    font-size: 48px;
+    color: var(--ion-color-primary);
+  }
+
+  h1 {
+    margin: 8px 0 4px;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    color: var(--ion-color-medium);
+  }
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--gg-superficie);
+
+  p {
+    margin: 0;
+    font-size: 14px;
+  }
+}
+
+.fila {
+  display: flex;
+  gap: 12px;
+}
