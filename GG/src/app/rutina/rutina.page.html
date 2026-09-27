@@ -2,7 +2,7 @@
   <ion-toolbar>
     <ion-title>Rutinas</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="nuevaRutina()">
+      <ion-button aria-label="Nueva rutina" (click)="nuevaRutina()">
         <ion-icon slot="icon-only" name="add"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -17,7 +17,7 @@
       <ion-select
         label="Mis rutinas"
         interface="action-sheet"
-        [value]="rutinaSeleccionadaId"
+        [value]="rutinaActual?.id"
         (ionChange)="seleccionarRutina($any($event).detail.value)"
       >
         @for (rutina of rutinas; track rutina.id) {
@@ -125,7 +125,11 @@
         @for (ejercicio of ejerciciosFiltrados; track ejercicio.id) {
           <ion-item [button]="modoEdicion" (click)="modoEdicion && editarEjercicio(ejercicio)">
             <ion-thumbnail slot="start" class="miniatura">
-              <ion-icon name="barbell"></ion-icon>
+              @if (ejercicio.imagen) {
+                <img [src]="urlImagen(ejercicio)" [alt]="ejercicio.nombre" loading="lazy" />
+              } @else {
+                <ion-icon name="barbell"></ion-icon>
+              }
             </ion-thumbnail>
 
             <ion-label>
@@ -141,6 +145,7 @@
                 slot="end"
                 fill="clear"
                 color="danger"
+                aria-label="Quitar ejercicio"
                 (click)="$event.stopPropagation(); confirmarEliminarEjercicio(ejercicio)"
               >
                 <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
@@ -170,6 +175,9 @@
           <ion-icon slot="start" name="add"></ion-icon>
           Añadir ejercicio
         </ion-button>
+        <ion-button expand="block" fill="clear" size="small" (click)="nuevoEjercicioManual()">
+          ¿No está en el catálogo? Escríbelo a mano
+        </ion-button>
         <ion-text color="medium">
           <p><small>Toca un ejercicio para editarlo o arrástralo para reordenar.</small></p>
         </ion-text>
@@ -181,6 +189,7 @@
       <ion-item button="true" detail="true" routerLink="/tabs/calorias">
         <ion-icon slot="start" name="flame"></ion-icon>
         <ion-label>Calorías estimadas de la sesión</ion-label>
+        <ion-note slot="end">~{{ kcalEstimadas }} kcal</ion-note>
       </ion-item>
       <ion-item button="true" detail="true" routerLink="/tabs/logros">
         <ion-icon slot="start" name="trophy"></ion-icon>
@@ -196,7 +205,7 @@
       expand="block"
       [disabled]="!rutinaActual || rutinaActual.ejercicios.length === 0"
       routerLink="/tabs/entrenamiento"
-      [queryParams]="{ rutinaId: rutinaSeleccionadaId }"
+      [queryParams]="{ rutinaId: rutinaActual?.id }"
     >
       <ion-icon slot="start" name="play"></ion-icon>
       Empezar rutina
@@ -211,7 +220,7 @@
       <ion-toolbar>
         <ion-title>{{ rutinaEnEdicionId === null ? 'Nueva rutina' : 'Editar rutina' }}</ion-title>
         <ion-buttons slot="end">
-          <ion-button (click)="cerrarModalRutina()">
+          <ion-button aria-label="Cerrar" (click)="cerrarModalRutina()">
             <ion-icon slot="icon-only" name="close"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -273,7 +282,7 @@
           {{ ejercicioEnEdicionId === null ? 'Nuevo ejercicio' : 'Editar ejercicio' }}
         </ion-title>
         <ion-buttons slot="end">
-          <ion-button (click)="cerrarModalEjercicio()">
+          <ion-button aria-label="Cerrar" (click)="cerrarModalEjercicio()">
             <ion-icon slot="icon-only" name="close"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -339,5 +348,15 @@
         Guardar ejercicio
       </ion-button>
     </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- Catálogo de ejercicios: el mismo selector que usan Entrenamiento y Calorías -->
+<ion-modal [isOpen]="modalCatalogoAbierto" (didDismiss)="cerrarCatalogo()">
+  <ng-template>
+    <app-selector-ejercicio
+      (seleccionar)="elegirDelCatalogo($event)"
+      (cerrar)="modalCatalogoAbierto = false"
+    ></app-selector-ejercicio>
   </ng-template>
 </ion-modal>

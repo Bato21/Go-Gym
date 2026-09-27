@@ -9,6 +9,13 @@
   --ion-color-primary-contrast-rgb: 255, 255, 255;
   --ion-color-primary-shade: #437ce0;
   --ion-color-primary-tint: #5e98ff;
+
+  // Superficies compartidas por todas las vistas. Se adaptan solas a tema
+  // claro y oscuro, así ninguna página necesita colores escritos a mano.
+  --gg-superficie: var(--ion-card-background, var(--ion-background-color-step-50, #f2f2f2));
+  --gg-superficie-alta: rgba(var(--ion-text-color-rgb, 0, 0, 0), 0.08);
+  --gg-borde: rgba(var(--ion-text-color-rgb, 0, 0, 0), 0.2);
+  --gg-acento-suave: rgba(var(--ion-color-primary-rgb), 0.15);
 }
 
 // Fondos oscuros del mockup. Se cargan después de dark.system.css

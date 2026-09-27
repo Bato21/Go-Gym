@@ -1,6 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { Component, computed, inject } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 
 import {
   IonContent,
@@ -22,6 +21,19 @@ import {
   lockClosedOutline
 } from 'ionicons/icons';
 
+import { PerfilService } from '../services/perfil.service';
+import { SesionesService } from '../services/sesiones.service';
+
+interface Logro {
+  icono: string;
+  titulo: string;
+  descripcion: string;
+  /** Avance actual y cifra que hay que alcanzar. */
+  actual: number;
+  objetivo: number;
+  completado: boolean;
+}
+
 @Component({
   selector: 'app-logros',
   templateUrl: './logros.page.html',
@@ -33,50 +45,72 @@ import {
     IonToolbar,
     IonIcon,
     IonProgressBar,
-    CommonModule,
-    FormsModule
+    DecimalPipe
   ]
 })
-export class LogrosPage implements OnInit {
+export class LogrosPage {
 
-  logros = [
-    {
-      icono: 'barbell-outline',
-      titulo: 'Primer entrenamiento',
-      descripcion: 'Completa tu primer entrenamiento',
-      completado: true
-    },
-    {
-      icono: 'flame-outline',
-      titulo: 'En llamas',
-      descripcion: 'Entrena 3 días seguidos',
-      completado: true
-    },
-    {
-      icono: 'trophy-outline',
-      titulo: 'Semana perfecta',
-      descripcion: 'Completa todos tus entrenamientos de la semana',
-      completado: false
-    },
-    {
-      icono: 'fitness-outline',
-      titulo: 'Constancia',
-      descripcion: 'Completa 10 entrenamientos',
-      completado: false
-    },
-    {
-      icono: 'medal-outline',
-      titulo: 'Atleta',
-      descripcion: 'Completa 25 entrenamientos',
-      completado: false
-    },
-    {
-      icono: 'star-outline',
-      titulo: 'Leyenda',
-      descripcion: 'Completa 100 entrenamientos',
-      completado: false
-    }
-  ];
+  private readonly perfil = inject(PerfilService);
+  private readonly sesiones = inject(SesionesService);
+
+  /** Se calculan con el historial real: se desbloquean solos al entrenar. */
+  readonly logros = computed<Logro[]>(() => {
+    const total = this.sesiones.historial().length;
+    const meta = this.perfil.metaSemanal();
+
+    const logros = [
+      {
+        icono: 'barbell-outline',
+        titulo: 'Primer entrenamiento',
+        descripcion: 'Completa tu primer entrenamiento',
+        actual: total,
+        objetivo: 1
+      },
+      {
+        icono: 'flame-outline',
+        titulo: 'En llamas',
+        descripcion: 'Entrena 3 días seguidos',
+        actual: this.sesiones.rachaRecord(),
+        objetivo: 3
+      },
+      {
+        icono: 'trophy-outline',
+        titulo: 'Semana perfecta',
+        descripcion: meta
+          ? `Completa tus ${meta} entrenamientos de la semana`
+          : 'Elige tus días de entrenamiento en Perfil',
+        actual: this.sesiones.mejorSemana(),
+        objetivo: meta
+      },
+      {
+        icono: 'fitness-outline',
+        titulo: 'Constancia',
+        descripcion: 'Completa 10 entrenamientos',
+        actual: total,
+        objetivo: 10
+      },
+      {
+        icono: 'medal-outline',
+        titulo: 'Atleta',
+        descripcion: 'Completa 25 entrenamientos',
+        actual: total,
+        objetivo: 25
+      },
+      {
+        icono: 'star-outline',
+        titulo: 'Leyenda',
+        descripcion: 'Completa 100 entrenamientos',
+        actual: total,
+        objetivo: 100
+      }
+    ];
+
+    return logros.map(logro => ({
+      ...logro,
+      actual: Math.min(logro.actual, logro.objetivo),
+      completado: logro.objetivo > 0 && logro.actual >= logro.objetivo
+    }));
+  });
 
   constructor() {
 
@@ -92,13 +126,11 @@ export class LogrosPage implements OnInit {
 
   }
 
-  ngOnInit() {}
-
   get logrosCompletados() {
-    return this.logros.filter(logro => logro.completado).length;
+    return this.logros().filter(logro => logro.completado).length;
   }
 
   get progreso() {
-    return this.logrosCompletados / this.logros.length;
+    return this.logrosCompletados / this.logros().length;
   }
 }

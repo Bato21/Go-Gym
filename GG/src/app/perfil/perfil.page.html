@@ -14,37 +14,45 @@
         name="person-circle-outline">
       </ion-icon>
       <!-- Esta parte se muestra en modo normal -->
-      <div *ngIf="!editando">
-        <h1>
-          {{ nombre }} {{ apellido }}
-        </h1>
-        <p class="subtitulo">
-          Mi perfil de entrenamiento
-        </p>
-      </div>
+      @if (!editando) {
+        <div>
+          <h1>
+            {{ nombreCompleto || 'Tu nombre' }}
+          </h1>
+          <p class="subtitulo">
+            @if (nombreCompleto) {
+              Mi perfil de entrenamiento
+            } @else {
+              Toca "Editar perfil" para completar tus datos
+            }
+          </p>
+        </div>
+      }
       <!-- Esta parte se muestra en modo edición -->
-      <div
-        class="editar-datos"
-        *ngIf="editando">
-        <div class="campo">
-          <label>
-            Nombre
-          </label>
-          <ion-input
-            [(ngModel)]="nombre"
-            placeholder="Ingresa tu nombre">
-          </ion-input>
+      @if (editando) {
+        <div class="editar-datos">
+          <div class="campo">
+            <label for="perfil-nombre">
+              Nombre
+            </label>
+            <ion-input
+              id="perfil-nombre"
+              [(ngModel)]="borrador.nombre"
+              placeholder="Ingresa tu nombre">
+            </ion-input>
+          </div>
+          <div class="campo">
+            <label for="perfil-apellido">
+              Apellido
+            </label>
+            <ion-input
+              id="perfil-apellido"
+              [(ngModel)]="borrador.apellido"
+              placeholder="Ingresa tu apellido">
+            </ion-input>
+          </div>
         </div>
-        <div class="campo">
-          <label>
-            Apellido
-          </label>
-          <ion-input
-            [(ngModel)]="apellido"
-            placeholder="Ingresa tu apellido">
-          </ion-input>
-        </div>
-      </div>
+      }
       <!-- Esta parte se muestra en modo normal -->
       <div class="racha">
         <ion-icon
@@ -55,7 +63,7 @@
             {{ diasRacha }}
           </span>
           <span>
-            días de racha
+            {{ diasRacha === 1 ? 'día de racha' : 'días de racha' }}
           </span>
         </div>
       </div>
@@ -69,29 +77,62 @@
         Próximos entrenamientos
       </h2>
     </div>
-    <div
-      class="entrenamiento"
-      *ngFor="let entrenamiento of proximosEntrenamientos">
-      <div class="fecha">
-        <ion-icon
-          name="calendar-outline">
-        </ion-icon>
+    <!-- En modo edición se eligen los días y la hora de entrenamiento -->
+    @if (editando) {
+      <div class="info-card editar-datos">
+        <div class="contenido-info">
+          <div class="campo">
+            <label for="perfil-dias">
+              Días de entrenamiento
+            </label>
+            <ion-select
+              id="perfil-dias"
+              [multiple]="true"
+              [(ngModel)]="borrador.diasEntrenamiento"
+              placeholder="Elige tus días">
+              @for (dia of nombresDias; track dia; let i = $index) {
+                <ion-select-option [value]="i">{{ dia }}</ion-select-option>
+              }
+            </ion-select>
+          </div>
+          <div class="campo">
+            <label>
+              Hora
+            </label>
+            <!-- Abre el selector de hora del modal de abajo -->
+            <ion-datetime-button datetime="perfil-hora"></ion-datetime-button>
+          </div>
+        </div>
       </div>
-      <div class="info-entrenamiento">
-        <h3>
-          {{ entrenamiento.entrenamiento }}
-        </h3>
-        <p>
-          {{ entrenamiento.dia }}
+    } @else {
+      @for (entrenamiento of proximosEntrenamientos; track entrenamiento.dia) {
+        <div class="entrenamiento">
+          <div class="fecha">
+            <ion-icon
+              name="calendar-outline">
+            </ion-icon>
+          </div>
+          <div class="info-entrenamiento">
+            <h3>
+              {{ entrenamiento.entrenamiento }}
+            </h3>
+            <p>
+              {{ entrenamiento.dia }}
+            </p>
+          </div>
+          <div class="hora">
+            <ion-icon
+              name="time-outline">
+            </ion-icon>
+            {{ entrenamiento.hora }}
+          </div>
+        </div>
+      } @empty {
+        <p class="label">
+          Elige tus días de entrenamiento en "Editar perfil".
         </p>
-      </div>
-      <div class="hora">
-        <ion-icon
-          name="time-outline">
-        </ion-icon>
-        {{ entrenamiento.hora }}
-      </div>
-    </div>
+      }
+    }
 <!-- Esta parte consiste en el progreso del usuario -->
     <div class="titulo-seccion">
       <ion-icon
@@ -113,15 +154,44 @@
           Mi objetivo
         </p>
 <!-- Esta parte se muestra en modo normal -->
-        <h3 *ngIf="!editando">
-          {{ objetivo }}
-        </h3>
-        <!-- Esta parte se muestra en modo edición -->
-        <ion-input
-          *ngIf="editando"
-          [(ngModel)]="objetivo"
-          placeholder="Ej: Ganar masa muscular">
-        </ion-input>
+        @if (!editando) {
+          <h3>
+            {{ perfil.objetivo || 'Sin definir' }}
+          </h3>
+        } @else {
+          <!-- Esta parte se muestra en modo edición -->
+          <ion-input
+            aria-label="Mi objetivo"
+            [(ngModel)]="borrador.objetivo"
+            placeholder="Ej: Ganar masa muscular">
+          </ion-input>
+        }
+      </div>
+    </div>
+<!-- Peso: lo usa Calorías para estimar la quema -->
+    <div class="info-card">
+      <div class="info-icono">
+        <ion-icon
+          name="scale-outline">
+        </ion-icon>
+      </div>
+      <div class="contenido-info">
+        <p class="label">
+          Peso corporal
+        </p>
+        @if (!editando) {
+          <h3>
+            {{ perfil.pesoKg }} kg
+          </h3>
+        } @else {
+          <ion-input
+            type="number"
+            inputmode="decimal"
+            aria-label="Peso corporal en kg"
+            [(ngModel)]="borrador.pesoKg"
+            placeholder="Ej: 75">
+          </ion-input>
+        }
       </div>
     </div>
 <!-- Esta parte consiste en mostrar los entrenamientos de la semana -->
@@ -157,52 +227,77 @@
           Rutina favorita
         </p>
         <!-- Esta parte se muestra en modo normal -->
-        <h3 *ngIf="!editando">
-          {{ rutinaFavorita }}
-        </h3>
-        <!-- Esta parte se muestra en modo edición -->
-        <ion-input
-          *ngIf="editando"
-          [(ngModel)]="rutinaFavorita"
-          placeholder="Ej: Push Pull Legs">
-        </ion-input>
+        @if (!editando) {
+          <h3>
+            {{ rutinaFavorita }}
+          </h3>
+        } @else {
+          <!-- Esta parte se muestra en modo edición -->
+          <ion-select
+            aria-label="Rutina favorita"
+            interface="action-sheet"
+            [(ngModel)]="borrador.rutinaFavoritaId"
+            placeholder="Elige una rutina">
+            <ion-select-option [value]="null">Sin elegir</ion-select-option>
+            @for (rutina of listaRutinas; track rutina.id) {
+              <ion-select-option [value]="rutina.id">{{ rutina.nombre }}</ion-select-option>
+            }
+          </ion-select>
+        }
       </div>
     </div>
-    <ion-button
-      *ngIf="!editando"
-      expand="block"
-      class="editar"
-      (click)="editarPerfil()">
-      <ion-icon
-        slot="start"
-        name="create-outline">
-      </ion-icon>
-      Editar perfil
-    </ion-button>
+    @if (!editando) {
+      <ion-button
+        expand="block"
+        class="editar"
+        (click)="editarPerfil()">
+        <ion-icon
+          slot="start"
+          name="create-outline">
+        </ion-icon>
+        Editar perfil
+      </ion-button>
+    } @else {
 <!-- Esta parte consiste en los botones de guardar y cancelar cambios -->
-    <ion-button
-      *ngIf="editando"
-      expand="block"
-      class="guardar"
-      (click)="guardarPerfil()">
-      <ion-icon
-        slot="start"
-        name="save-outline">
-      </ion-icon>
-      Guardar cambios
-    </ion-button>
-    <!-- Cancelar -->
-    <ion-button
-      *ngIf="editando"
-      expand="block"
-      fill="outline"
-      class="cancelar"
-      (click)="cancelarEdicion()">
-      <ion-icon
-        slot="start"
-        name="close-outline">
-      </ion-icon>
-      Cancelar
-    </ion-button>
+      <ion-button
+        expand="block"
+        class="guardar"
+        (click)="guardarPerfil()">
+        <ion-icon
+          slot="start"
+          name="save-outline">
+        </ion-icon>
+        Guardar cambios
+      </ion-button>
+      <!-- Cancelar -->
+      <ion-button
+        expand="block"
+        fill="outline"
+        class="cancelar"
+        (click)="cancelarEdicion()">
+        <ion-icon
+          slot="start"
+          name="close-outline">
+        </ion-icon>
+        Cancelar
+      </ion-button>
+    }
   </div>
 </ion-content>
+<!-- Selector de hora: siempre montado para que ion-datetime-button lo encuentre -->
+<ion-modal [keepContentsMounted]="true">
+  <ng-template>
+    <ion-datetime
+      id="perfil-hora"
+      presentation="time"
+      locale="es-CL"
+      hourCycle="h23"
+      [preferWheel]="true"
+      [showDefaultButtons]="true"
+      doneText="Listo"
+      cancelText="Cancelar"
+      [value]="borrador.horaEntrenamiento"
+      (ionChange)="cambiarHora($event.detail.value)">
+    </ion-datetime>
+  </ng-template>
+</ion-modal>

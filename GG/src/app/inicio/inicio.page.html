@@ -2,11 +2,19 @@
   <ion-toolbar>
     <div class="encabezado">
       <div>
+        <br>
+        
         <p class="fecha">{{ fecha }}</p>
-        <h1>{{ saludo }}, {{ usuario.nombre }}</h1>
+        
+        <h1>{{ saludo }}@if (nombre) {, {{ nombre }}}</h1>
+        <br>
       </div>
-      <ion-avatar routerLink="/tabs/perfil">
-        <span>{{ iniciales }}</span>
+      <ion-avatar routerLink="/tabs/perfil" aria-label="Ir a mi perfil">
+        @if (iniciales) {
+          <span>{{ iniciales }}</span>
+        } @else {
+          <ion-icon name="person"></ion-icon>
+        }
       </ion-avatar>
     </div>
   </ion-toolbar>
@@ -20,7 +28,7 @@
       <div class="titulo-racha">
         <ion-card-title>
           <ion-icon name="flame" color="primary"></ion-icon>
-          {{ racha.actual }} días seguidos
+          {{ racha.actual }} {{ racha.actual === 1 ? 'día seguido' : 'días seguidos' }}
         </ion-card-title>
         <ion-badge color="medium">Récord {{ racha.record }}</ion-badge>
       </div>
@@ -52,52 +60,89 @@
     }
   </div>
 
-  <!-- Rutina de hoy -->
+  <!-- Rutina de hoy: la siguiente de la rotación, o el entrenamiento que quedó abierto -->
   <ion-card class="destacada">
-    <ion-card-header>
-      <ion-card-subtitle>Toca hoy</ion-card-subtitle>
-    </ion-card-header>
-
-    <ion-card-content>
-      <div class="fila-hoy">
-        <div>
-          <h2>{{ rutinaHoy.nombre }}</h2>
-          <p>
-            {{ rutinaHoy.ejercicios }} ejercicios · {{ rutinaHoy.minutos }} min ·
-            {{ rutinaHoy.nivel }}
-          </p>
+    @if (enCurso; as sesion) {
+      <ion-card-header>
+        <ion-card-subtitle>Entrenamiento en curso</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="fila-hoy">
+          <div>
+            <h2>{{ sesion.nombre }}</h2>
+            <p>{{ sesion.ejercicios.length }} ejercicios registrados</p>
+          </div>
+          <ion-button size="small" routerLink="/tabs/entrenamiento">
+            <ion-icon slot="start" name="play"></ion-icon>
+            Continuar
+          </ion-button>
         </div>
-        <ion-button
-          size="small"
-          routerLink="/tabs/entrenamiento"
-          [queryParams]="{ rutinaId: rutinaHoy.id }"
-        >
-          <ion-icon slot="start" name="play"></ion-icon>
-          Empezar
-        </ion-button>
-      </div>
-    </ion-card-content>
+      </ion-card-content>
+    } @else if (rutinaHoy; as rutina) {
+      <ion-card-header>
+        <ion-card-subtitle>{{ etiquetaRutinaHoy }}</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="fila-hoy">
+          <div>
+            <h2>{{ rutina.nombre }} · {{ rutina.categoria }}</h2>
+            <p>
+              {{ rutina.ejercicios.length }} ejercicios · {{ rutina.minutos }} min ·
+              {{ rutina.nivel }}
+            </p>
+          </div>
+          <ion-button
+            size="small"
+            routerLink="/tabs/entrenamiento"
+            [queryParams]="{ rutinaId: rutina.id }"
+          >
+            <ion-icon slot="start" name="play"></ion-icon>
+            Empezar
+          </ion-button>
+        </div>
+      </ion-card-content>
+    } @else {
+      <ion-card-header>
+        <ion-card-subtitle>Sin rutinas</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="fila-hoy">
+          <div>
+            <h2>Arma tu primera rutina</h2>
+            <p>Elige ejercicios del catálogo y empieza a entrenar.</p>
+          </div>
+          <ion-button size="small" routerLink="/tabs/rutina">
+            <ion-icon slot="start" name="add"></ion-icon>
+            Crear
+          </ion-button>
+        </div>
+      </ion-card-content>
+    }
   </ion-card>
 
   <!-- Últimas sesiones -->
   <div class="seccion">
     <span>Últimas sesiones</span>
-    <ion-button fill="clear" size="small" routerLink="/tabs/logros">
+    <ion-button fill="clear" size="small" routerLink="/tabs/entrenamiento">
       Ver todas
     </ion-button>
   </div>
 
   <ion-list>
-    @for (sesion of ultimasSesiones; track sesion.nombre) {
-      <ion-item button="true" detail="false" routerLink="/tabs/logros">
+    @for (sesion of ultimasSesiones; track sesion.id) {
+      <ion-item button="true" detail="false" routerLink="/tabs/entrenamiento">
         <ion-thumbnail slot="start" class="miniatura">
-          <ion-icon [name]="sesion.icono"></ion-icon>
+          <ion-icon name="barbell"></ion-icon>
         </ion-thumbnail>
         <ion-label>
           <h2>{{ sesion.nombre }}</h2>
           <p>{{ sesion.dia }} · {{ sesion.minutos }} min</p>
         </ion-label>
         <ion-note slot="end">{{ sesion.metrica }}</ion-note>
+      </ion-item>
+    } @empty {
+      <ion-item lines="none">
+        <ion-label color="medium">Aún no terminas ningún entrenamiento.</ion-label>
       </ion-item>
     }
   </ion-list>

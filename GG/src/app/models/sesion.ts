@@ -15,17 +15,22 @@ export interface EjercicioSesion {
   imagen: string | null;
   /** MET del catálogo, para estimar la quema. Falta en sesiones antiguas. */
   met?: number;
+  /** Repeticiones que pedía la rutina; se muestran como guía. Solo si vino de una rutina. */
+  repsObjetivo?: number;
   series: Serie[];
 }
 
 export interface Sesion {
   id: number;
   nombre: string;
+  /** Rutina de la que salió; falta en entrenamientos libres. */
+  rutinaId?: number;
   /** Fechas en texto ISO para poder guardarlas en localStorage. */
   inicio: string;
   fin?: string;
   ejercicios: EjercicioSesion[];
 }
 
-/** Clave de localStorage del historial. La escribe Entrenamiento y la lee Calorías. */
+/** Claves de localStorage. Solo las usa SesionesService. */
 export const CLAVE_HISTORIAL = 'entrenamientosTerminados';
+export const CLAVE_EN_CURSO = 'entrenamientoEnCurso';

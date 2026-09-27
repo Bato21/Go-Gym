@@ -1,10 +1,4 @@
-ion-content {
-  --background: #111111;
-}
-ion-toolbar {
-  --background: #1d1d1d;
-  --color: white;
-}
+/* Los colores salen del tema (theme/variables.scss): funcionan en modo claro y oscuro */
 .contenedor {
   padding: 20px;
   padding-bottom: 100px;
@@ -12,20 +6,19 @@ ion-toolbar {
 
 /* CABECERA */
 .resumen {
-  background: #1c1c1e;
+  background: var(--gg-superficie);
   border-radius: 18px;
   padding: 25px;
   text-align: center;
   margin-bottom: 30px;
 
   h1 {
-    color: white;
     font-size: 24px;
     margin-bottom: 5px;
   }
 
   p {
-    color: #9b9b9b;
+    color: var(--ion-color-medium);
     margin-bottom: 20px;
   }
 }
@@ -39,33 +32,34 @@ ion-toolbar {
   justify-content: center;
 
   border-radius: 50%;
-  background: #252d3b;
+  background: var(--gg-acento-suave);
 
   ion-icon {
-    color: #428cff;
+    color: var(--ion-color-primary);
     font-size: 40px;
   }
 }
 ion-progress-bar {
   height: 8px;
   border-radius: 20px;
-  --background: #333333;
-  --progress-background: #428cff;
+}
+.porcentaje,
+.estado,
+.avance {
+  color: var(--ion-color-primary);
+  font-weight: bold;
 }
 .porcentaje {
   display: block;
-  color: #428cff;
   margin-top: 10px;
-  font-weight: bold;
 }
 h2 {
-  color: white;
   font-size: 20px;
   margin-bottom: 15px;
 }
 /* TARJETAS */
 .logro {
-  background: #1c1c1e;
+  background: var(--gg-superficie);
 
   display: flex;
   align-items: center;
@@ -83,37 +77,38 @@ h2 {
   justify-content: center;
   align-items: center;
   border-radius: 50%;
-  background: #26344d;
+  background: var(--gg-acento-suave);
   margin-right: 15px;
   ion-icon {
-    color: #428cff;
+    color: var(--ion-color-primary);
     font-size: 26px;
   }
 }
 .informacion {
   flex: 1;
   h3 {
-    color: white;
     font-size: 16px;
     margin: 0 0 5px;
   }
   p {
-    color: #999999;
+    color: var(--ion-color-medium);
     font-size: 13px;
     margin: 0;
   }
 }
 .estado {
-  color: #428cff;
   font-size: 22px;
-  font-weight: bold;
+}
+.avance {
+  font-size: 13px;
+  margin-left: 8px;
 }
 .bloqueado {
   opacity: 0.45;
   .icono {
-    background: #292929;
+    background: var(--gg-superficie-alta);
     ion-icon {
-      color: #777777;
+      color: var(--ion-color-medium);
     }
   }
 }

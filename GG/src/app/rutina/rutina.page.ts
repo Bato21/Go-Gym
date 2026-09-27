@@ -50,24 +50,12 @@ import {
   trophy,
 } from 'ionicons/icons';
 
-interface Ejercicio {
-  id: number;
-  nombre: string;
-  grupo: string;
-  series: number;
-  repeticiones: number;
-  carga: string;
-  descansoSeg: number;
-}
-
-interface Rutina {
-  id: number;
-  nombre: string;
-  categoria: string;
-  nivel: string;
-  minutos: number;
-  ejercicios: Ejercicio[];
-}
+import { SelectorEjercicioComponent } from '../components/selector-ejercicio/selector-ejercicio.component';
+import { EjercicioCatalogo, GRUPOS_MUSCULARES, NIVELES } from '../models/ejercicio-catalogo';
+import { Ejercicio, Rutina, cargaEnKg, metRutina } from '../models/rutina';
+import { CatalogoEjerciciosService } from '../services/catalogo-ejercicios.service';
+import { PerfilService } from '../services/perfil.service';
+import { RutinasService } from '../services/rutinas.service';
 
 @Component({
   selector: 'app-rutina',
@@ -107,62 +95,21 @@ interface Rutina {
     IonThumbnail,
     IonTitle,
     IonToolbar,
+    SelectorEjercicioComponent,
   ],
 })
 export class RutinaPage {
-  niveles = ['Principiante', 'Intermedio', 'Avanzado'];
-  gruposMusculares = [
-    'Pecho',
-    'Espalda',
-    'Hombro',
-    'Bíceps',
-    'Tríceps',
-    'Pierna',
-    'Core',
-  ];
+  readonly niveles = NIVELES;
+  readonly gruposMusculares = GRUPOS_MUSCULARES;
 
-  rutinas: Rutina[] = [
-    {
-      id: 1,
-      nombre: 'Push A',
-      categoria: 'Fuerza',
-      nivel: 'Intermedio',
-      minutos: 55,
-      ejercicios: [
-        { id: 11, nombre: 'Press banca', grupo: 'Pecho', series: 4, repeticiones: 8, carga: '45 kg', descansoSeg: 90 },
-        { id: 12, nombre: 'Press inclinado con mancuernas', grupo: 'Pecho', series: 3, repeticiones: 10, carga: '18 kg', descansoSeg: 90 },
-        { id: 13, nombre: 'Elevaciones laterales', grupo: 'Hombro', series: 4, repeticiones: 12, carga: '8 kg', descansoSeg: 60 },
-        { id: 14, nombre: 'Fondos en paralelas', grupo: 'Tríceps', series: 3, repeticiones: 10, carga: 'Peso corporal', descansoSeg: 90 },
-        { id: 15, nombre: 'Extensión de tríceps en polea', grupo: 'Tríceps', series: 4, repeticiones: 12, carga: '25 kg', descansoSeg: 60 },
-      ],
-    },
-    {
-      id: 2,
-      nombre: 'Pull B',
-      categoria: 'Fuerza',
-      nivel: 'Intermedio',
-      minutos: 50,
-      ejercicios: [
-        { id: 21, nombre: 'Dominadas', grupo: 'Espalda', series: 4, repeticiones: 6, carga: 'Peso corporal', descansoSeg: 120 },
-        { id: 22, nombre: 'Remo con barra', grupo: 'Espalda', series: 4, repeticiones: 10, carga: '40 kg', descansoSeg: 90 },
-        { id: 23, nombre: 'Curl con mancuernas', grupo: 'Bíceps', series: 3, repeticiones: 12, carga: '12 kg', descansoSeg: 60 },
-      ],
-    },
-    {
-      id: 3,
-      nombre: 'Legs A',
-      categoria: 'Fuerza',
-      nivel: 'Avanzado',
-      minutos: 60,
-      ejercicios: [
-        { id: 31, nombre: 'Sentadilla', grupo: 'Pierna', series: 5, repeticiones: 5, carga: '80 kg', descansoSeg: 150 },
-        { id: 32, nombre: 'Peso muerto rumano', grupo: 'Pierna', series: 4, repeticiones: 8, carga: '60 kg', descansoSeg: 120 },
-        { id: 33, nombre: 'Plancha', grupo: 'Core', series: 3, repeticiones: 1, carga: '60 s', descansoSeg: 45 },
-      ],
-    },
-  ];
+  private readonly alertas = inject(AlertController);
+  private readonly catalogo = inject(CatalogoEjerciciosService);
+  private readonly perfil = inject(PerfilService);
+  private readonly servicio = inject(RutinasService);
 
-  rutinaSeleccionadaId = 1;
+  /** Empieza mostrando la rutina favorita del perfil, o la primera. */
+  rutinaSeleccionadaId =
+    this.perfil.perfil().rutinaFavoritaId ?? this.servicio.rutinas()[0]?.id ?? 0;
   grupoActivo = 'Todos';
   modoEdicion = false;
 
@@ -175,7 +122,9 @@ export class RutinaPage {
   ejercicioEnEdicionId: number | null = null;
   borradorEjercicio = this.ejercicioVacio();
 
-  private readonly alertas = inject(AlertController);
+  /** Selector del catálogo. Al elegir, se abre el formulario ya relleno. */
+  modalCatalogoAbierto = false;
+  private abrirFormularioAlCerrarCatalogo = false;
 
   constructor() {
     addIcons({
@@ -194,8 +143,13 @@ export class RutinaPage {
 
   // ---------------------------------------------------------------- lecturas
 
+  get rutinas(): Rutina[] {
+    return this.servicio.rutinas();
+  }
+
+  /** Si la seleccionada ya no existe (se borró), muestra la primera. */
   get rutinaActual(): Rutina | undefined {
-    return this.rutinas.find((r) => r.id === this.rutinaSeleccionadaId);
+    return this.servicio.obtener(this.rutinaSeleccionadaId) ?? this.rutinas[0];
   }
 
   /** "Todos" + los grupos musculares presentes en la rutina, sin repetir. */
@@ -222,7 +176,7 @@ export class RutinaPage {
   /** Volumen de la rutina: series x reps x carga, ignorando lo que no va en kg. */
   get volumenEstimado(): number {
     return (this.rutinaActual?.ejercicios ?? []).reduce(
-      (suma, e) => suma + e.series * e.repeticiones * this.cargaEnKg(e.carga),
+      (suma, e) => suma + e.series * e.repeticiones * cargaEnKg(e.carga),
       0
     );
   }
@@ -240,9 +194,22 @@ export class RutinaPage {
     return ejercicios.filter((e) => e.grupo === grupo).length;
   }
 
+  /** Estimación de la sesión con el peso del perfil: MET × kg × horas. */
+  get kcalEstimadas(): number {
+    const rutina = this.rutinaActual;
+    if (!rutina) {
+      return 0;
+    }
+    return Math.round(metRutina(rutina) * this.perfil.perfil().pesoKg * (rutina.minutos / 60));
+  }
+
   /** Degradado de portada fijo por rutina, para distinguirlas de un vistazo. */
   get clasePortada(): string {
-    return `portada portada--${this.rutinaSeleccionadaId % 3}`;
+    return `portada portada--${(this.rutinaActual?.id ?? 0) % 3}`;
+  }
+
+  urlImagen(ejercicio: Ejercicio): string {
+    return this.catalogo.urlImagen(ejercicio.imagen ?? null);
   }
 
   /** Solo se puede reordenar en modo edición y sobre la lista completa. */
@@ -281,7 +248,7 @@ export class RutinaPage {
       return;
     }
     this.rutinaEnEdicionId = rutina.id;
-    this.borradorRutina = { ...rutina };
+    this.borradorRutina = { ...rutina, ejercicios: [] };
     this.modalRutinaAbierto = true;
   }
 
@@ -291,31 +258,20 @@ export class RutinaPage {
       return;
     }
 
+    const datos = {
+      nombre,
+      categoria: this.borradorRutina.categoria.trim() || 'Fuerza',
+      nivel: this.borradorRutina.nivel,
+      minutos: Number(this.borradorRutina.minutos) || 0,
+    };
+
     if (this.rutinaEnEdicionId === null) {
-      const nueva: Rutina = {
-        id: this.siguienteId(this.rutinas.map((r) => r.id)),
-        nombre,
-        categoria: this.borradorRutina.categoria.trim() || 'Fuerza',
-        nivel: this.borradorRutina.nivel,
-        minutos: Number(this.borradorRutina.minutos) || 0,
-        ejercicios: [],
-      };
-      this.rutinas = [...this.rutinas, nueva];
+      const nueva = this.servicio.crear(datos);
       this.rutinaSeleccionadaId = nueva.id;
       this.grupoActivo = 'Todos';
       this.modoEdicion = true;
     } else {
-      this.rutinas = this.rutinas.map((r) =>
-        r.id === this.rutinaEnEdicionId
-          ? {
-              ...r,
-              nombre,
-              categoria: this.borradorRutina.categoria.trim() || 'Fuerza',
-              nivel: this.borradorRutina.nivel,
-              minutos: Number(this.borradorRutina.minutos) || 0,
-            }
-          : r
-      );
+      this.servicio.actualizar(this.rutinaEnEdicionId, datos);
     }
 
     this.cerrarModalRutina();
@@ -327,27 +283,19 @@ export class RutinaPage {
       return;
     }
 
-    let idEjercicio = this.siguienteId(
-      this.rutinas.flatMap((r) => r.ejercicios).map((e) => e.id)
-    );
-
-    const copia: Rutina = {
-      ...rutina,
-      id: this.siguienteId(this.rutinas.map((r) => r.id)),
-      nombre: `${rutina.nombre} (copia)`,
-      ejercicios: rutina.ejercicios.map((e) => ({ ...e, id: idEjercicio++ })),
-    };
-
-    this.rutinas = [...this.rutinas, copia];
-    this.rutinaSeleccionadaId = copia.id;
-    this.grupoActivo = 'Todos';
+    const copia = this.servicio.duplicar(rutina.id);
+    if (copia) {
+      this.rutinaSeleccionadaId = copia.id;
+      this.grupoActivo = 'Todos';
+    }
   }
 
   eliminarRutina() {
-    if (this.rutinas.length <= 1) {
+    const rutina = this.rutinaActual;
+    if (!rutina || this.rutinas.length <= 1) {
       return;
     }
-    this.rutinas = this.rutinas.filter((r) => r.id !== this.rutinaSeleccionadaId);
+    this.servicio.eliminar(rutina.id);
     this.rutinaSeleccionadaId = this.rutinas[0].id;
     this.grupoActivo = 'Todos';
     this.modoEdicion = false;
@@ -378,10 +326,40 @@ export class RutinaPage {
 
   // ----------------------------------------------------- ejercicio: acciones
 
+  /** Añadir abre el catálogo; el formulario llega después, ya relleno. */
   nuevoEjercicio() {
+    this.modalCatalogoAbierto = true;
+  }
+
+  /** Para ejercicios que no están en el catálogo. */
+  nuevoEjercicioManual() {
     this.ejercicioEnEdicionId = null;
     this.borradorEjercicio = this.ejercicioVacio();
     this.modalEjercicioAbierto = true;
+  }
+
+  elegirDelCatalogo(elegido: EjercicioCatalogo) {
+    this.ejercicioEnEdicionId = null;
+    this.borradorEjercicio = {
+      ...this.ejercicioVacio(),
+      nombre: elegido.nombre,
+      grupo: elegido.grupo,
+      carga: elegido.pesoCorporal ? 'Peso corporal' : '',
+      catalogoId: elegido.id,
+      imagen: elegido.imagen,
+      met: elegido.met,
+    };
+    this.abrirFormularioAlCerrarCatalogo = true;
+    this.modalCatalogoAbierto = false;
+  }
+
+  /** Se llama cuando el selector terminó de cerrarse, para no solapar los dos modales. */
+  cerrarCatalogo() {
+    this.modalCatalogoAbierto = false;
+    if (this.abrirFormularioAlCerrarCatalogo) {
+      this.abrirFormularioAlCerrarCatalogo = false;
+      this.modalEjercicioAbierto = true;
+    }
   }
 
   editarEjercicio(ejercicio: Ejercicio) {
@@ -397,28 +375,17 @@ export class RutinaPage {
       return;
     }
 
-    const datos = {
+    this.servicio.guardarEjercicio(rutina.id, this.ejercicioEnEdicionId, {
       nombre,
       grupo: this.borradorEjercicio.grupo,
       series: Number(this.borradorEjercicio.series) || 1,
       repeticiones: Number(this.borradorEjercicio.repeticiones) || 1,
       carga: this.borradorEjercicio.carga.trim() || 'Peso corporal',
       descansoSeg: Number(this.borradorEjercicio.descansoSeg) || 60,
-    };
-
-    if (this.ejercicioEnEdicionId === null) {
-      const nuevo: Ejercicio = {
-        id: this.siguienteId(
-          this.rutinas.flatMap((r) => r.ejercicios).map((e) => e.id)
-        ),
-        ...datos,
-      };
-      rutina.ejercicios = [...rutina.ejercicios, nuevo];
-    } else {
-      rutina.ejercicios = rutina.ejercicios.map((e) =>
-        e.id === this.ejercicioEnEdicionId ? { ...e, ...datos } : e
-      );
-    }
+      catalogoId: this.borradorEjercicio.catalogoId,
+      imagen: this.borradorEjercicio.imagen,
+      met: this.borradorEjercicio.met,
+    });
 
     this.cerrarModalEjercicio();
   }
@@ -428,7 +395,7 @@ export class RutinaPage {
     if (!rutina) {
       return;
     }
-    rutina.ejercicios = rutina.ejercicios.filter((e) => e.id !== ejercicio.id);
+    this.servicio.eliminarEjercicio(rutina.id, ejercicio.id);
     if (!this.grupos.includes(this.grupoActivo)) {
       this.grupoActivo = 'Todos';
     }
@@ -459,26 +426,13 @@ export class RutinaPage {
   reordenar(event: CustomEvent<ItemReorderEventDetail>) {
     const rutina = this.rutinaActual;
     if (rutina) {
-      rutina.ejercicios = event.detail.complete(rutina.ejercicios);
+      this.servicio.reordenarEjercicios(rutina.id, event.detail.complete([...rutina.ejercicios]));
     } else {
       event.detail.complete();
     }
   }
 
   // -------------------------------------------------------------- auxiliares
-
-  /** "45 kg" -> 45. "Peso corporal" o "60 s" no suman volumen. */
-  private cargaEnKg(carga: string): number {
-    if (!/kg/i.test(carga)) {
-      return 0;
-    }
-    const valor = parseFloat(carga.replace(',', '.'));
-    return Number.isFinite(valor) ? valor : 0;
-  }
-
-  private siguienteId(ids: number[]): number {
-    return ids.length ? Math.max(...ids) + 1 : 1;
-  }
 
   private rutinaVacia(): Rutina {
     return {

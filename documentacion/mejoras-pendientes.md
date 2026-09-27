@@ -1,60 +1,46 @@
 # Mejoras pendientes
 
 Ideas detectadas mientras se acercaban **Inicio** y **Rutina** al mockup
-(`Go Gym Mobile App Design.pdf`, pantallas 01 y 03). Ninguna se implementó en ese paso:
-o quedan fuera de esas dos vistas, o son lo bastante grandes como para merecer su propio commit.
+(`Go Gym Mobile App Design.pdf`, pantallas 01 y 03).
 
-Orden sugerido: 1 → 2 → 3, el resto cuando haya tiempo.
+## Hecho: datos centralizados
 
-## 1. Extraer `servicios/rutinas.service.ts`
+Los puntos 1 a 3 de la versión anterior de este documento ya están resueltos. Ninguna vista
+guarda datos por su cuenta: todas leen de tres servicios en `GG/src/app/services/`, que
+persisten en `localStorage` y usan signals para que cada pestaña se repinte sola (la app no usa zone.js).
 
-Hoy las interfaces `Rutina` y `Ejercicio`, la semilla de 3 rutinas y toda la lógica de
-edición viven dentro de `GG/src/app/rutina/rutina.page.ts`. Inicio no puede leer nada de eso,
-así que su tarjeta "Toca hoy" y sus "Últimas sesiones" son datos escritos a mano que no
-corresponden a las rutinas reales.
+| Servicio | Qué guarda | Quién lo usa |
+|---|---|---|
+| `PerfilService` | Nombre, objetivo, peso, días y hora de entrenamiento, meta de calorías y macros, rutina favorita | Inicio, Perfil, Calorías, Rutina, Logros |
+| `RutinasService` | Rutinas y sus ejercicios, y la rotación ("qué toca") | Rutina, Inicio, Entrenamiento, Perfil |
+| `SesionesService` | Entrenamiento en curso, historial, racha, totales por semana | Entrenamiento, Inicio, Calorías, Perfil, Logros |
 
-Es el paso que ya exige `entrenamiento-especificacion.md` §2 antes de construir la vista
-Entrenamiento, y de paso arregla la inconsistencia: el mockup dice que Push A tiene
-6 ejercicios y la semilla tiene 5.
+Consecuencias visibles:
 
-## 2. Persistencia
+- El nombre, el peso y la meta semanal son los mismos en todas las pestañas. La meta semanal es
+  la cantidad de días de entrenamiento elegidos en Perfil.
+- La racha, las métricas de la semana, "Últimas sesiones" y los logros se calculan con el historial real.
+- "Toca hoy" (Inicio) y "Próximos entrenamientos" (Perfil) salen de la rotación de rutinas y de los días del perfil.
+- "Empezar" en Rutina o Inicio abre Entrenamiento con esa rutina cargada (`?rutinaId=`).
+- Rutina añade ejercicios desde el mismo selector del catálogo, así que traen foto y MET para calcular calorías.
+- Los datos guardados por versiones anteriores (`perfilUsuario`, la meta y el peso de `caloriasUsuario`) se migran solos.
 
-Cualquier rutina creada o editada se pierde al recargar. Opciones: `localStorage` (rápido) o
-`@capacitor/preferences` (funciona igual en app nativa). Conviene hacerlo **después** del
-servicio, para guardar en un solo lugar y no en cada página.
-
-## 3. Racha y métricas calculadas
-
-En `inicio.page.ts` la fecha, el saludo y el día "hoy" de la racha ya se calculan con la fecha
-real del dispositivo, pero el resto sigue siendo semilla:
-
-- `racha.completados` es un arreglo fijo de lunes a domingo; debería salir de las sesiones registradas.
-- `racha.actual` / `racha.record` están escritos a mano.
-- `metricas` (sesiones, volumen, tiempo) y `sesionesSemana` también.
-- `ultimasSesiones` es un arreglo hardcodeado (lo menciona `entrenamiento-especificacion.md` §7.4).
-
-Todo esto depende de que Entrenamiento empiece a escribir sesiones.
-
-## 4. Foto real de portada y demos de ejercicio
+## 1. Foto real de portada y demos de ejercicio
 
 La portada de Rutina es un degradado con un icono; cada rutina recibe uno distinto según su id.
-Falta permitir subir una foto (Capacitor Camera / Filesystem) y mostrar los GIFs de ejercicio de
-ExerciseDB, ambos ya previstos en la propuesta del proyecto.
+Falta permitir subir una foto (Capacitor Camera / Filesystem). Las miniaturas del catálogo ya se
+muestran en Rutina y Entrenamiento; faltan los GIFs animados.
 
-## 5. Tab bar del mockup
+## 2. Tab bar del mockup
 
 El mockup tiene un botón central "+" elevado sobre la barra de pestañas, que la app no tiene
-(`tabs.page.html` son 6 pestañas planas). Implica tocar `tabs`, que quedó fuera del alcance
-de este cambio.
+(`tabs.page.html` son 6 pestañas planas).
 
-## 6. Detalles de calidad
+## 3. Detalles de calidad
 
-- **Accesibilidad**: los botones de solo icono (`add`, `close`, borrar) no tienen `aria-label`.
-  Revisar también el contraste de los chips en tema claro.
-- **Estados de carga**: cuando haya datos asíncronos, usar `ion-skeleton-text` en vez de tarjetas vacías.
+- **Estados de carga**: si algún dato pasa a ser asíncrono, usar `ion-skeleton-text` en vez de tarjetas vacías.
 - **Presupuesto de estilos**: `angular.json` limita cada `.scss` de componente a 2 kB de aviso y
-  4 kB de error. `inicio.page.scss` quedó justo debajo del límite; si crece hay que mover lo común
-  a `theme/variables.scss` o subir el presupuesto de forma consciente.
-- **`index.html`** todavía dice `<title>Ionic App</title>` y usa el favicon por defecto de Ionic.
-- **Lint**: `logros` y `perfil` fallan con `prefer-control-flow` (usan `*ngIf` / `*ngFor` en vez de
-  `@if` / `@for`) y `logros` además con `no-empty-lifecycle-method`. `calorias` ya pasa.
+  4 kB de error. Los colores compartidos viven en `theme/variables.scss` (`--gg-superficie`,
+  `--gg-acento-suave`…); usarlos en vez de repetir colores en cada página.
+- **Favicon**: sigue siendo el de Ionic.
+- **Historial**: no se puede borrar ni editar un entrenamiento terminado.

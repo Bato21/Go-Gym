@@ -1,5 +1,7 @@
 import { ChangeDetectorRef, Component, OnDestroy, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   AlertController,
   IonButton,
@@ -26,16 +28,19 @@ import {
   IonThumbnail,
   IonTitle,
   IonToolbar,
+  ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { add, barbell, checkmark, close, play, timerOutline, trashOutline } from 'ionicons/icons';
 
 import { SelectorEjercicioComponent } from '../components/selector-ejercicio/selector-ejercicio.component';
 import { EjercicioCatalogo } from '../models/ejercicio-catalogo';
-import { CLAVE_HISTORIAL, EjercicioSesion, Serie, Sesion } from '../models/sesion';
+import { Rutina } from '../models/rutina';
+import { EjercicioSesion, Serie, Sesion } from '../models/sesion';
 import { CatalogoEjerciciosService } from '../services/catalogo-ejercicios.service';
-
-const CLAVE_EN_CURSO = 'entrenamientoEnCurso';
+import { RutinasService } from '../services/rutinas.service';
+import { SesionesService } from '../services/sesiones.service';
+import { formatearCronometro } from '../utils/fechas';
 
 @Component({
   selector: 'app-entrenamiento',
@@ -74,12 +79,6 @@ export class EntrenamientoPage implements OnDestroy {
   /** Opciones del selector de esfuerzo. */
   readonly escalaRpe = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-  /** El entrenamiento que se está haciendo ahora; null si no hay ninguno. */
-  enCurso: Sesion | null = null;
-
-  /** Entrenamientos ya terminados, el más reciente primero. */
-  historial: Sesion[] = [];
-
   /** Nombre que se escribe antes de empezar. */
   nombreNuevo = '';
 
@@ -93,12 +92,24 @@ export class EntrenamientoPage implements OnDestroy {
   }, 1000);
 
   private readonly alertas = inject(AlertController);
+  private readonly avisos = inject(ToastController);
   private readonly catalogo = inject(CatalogoEjerciciosService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly ruta = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly rutinasService = inject(RutinasService);
+  private readonly sesiones = inject(SesionesService);
 
   constructor() {
     addIcons({ add, barbell, checkmark, close, play, timerOutline, trashOutline });
-    this.cargar();
+
+    // "Empezar" en Rutina o Inicio llega aquí con ?rutinaId=…
+    this.ruta.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const id = params.get('rutinaId');
+      if (id !== null) {
+        this.empezarDesdeEnlace(Number(id));
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -107,29 +118,47 @@ export class EntrenamientoPage implements OnDestroy {
 
   // ---------------------------------------------------------------- lecturas
 
+  /** El entrenamiento que se está haciendo ahora; null si no hay ninguno. */
+  get enCurso(): Sesion | null {
+    return this.sesiones.enCurso();
+  }
+
+  /** Entrenamientos ya terminados, el más reciente primero. */
+  get historial(): Sesion[] {
+    return this.sesiones.historial();
+  }
+
+  /** Rutinas con ejercicios, para empezar desde ellas. */
+  get rutinas(): Rutina[] {
+    return this.rutinasService.disponibles();
+  }
+
+  /** La que toca según la rotación, para marcarla en la lista. */
+  get siguienteRutina(): Rutina | undefined {
+    return this.rutinasService.siguiente();
+  }
+
   /** Tiempo desde que empezó el entrenamiento en curso, ej. "12:05". */
   get cronometro(): string {
     if (!this.enCurso) {
       return '00:00';
     }
-    return this.formatearDuracion(this.ahora - Date.parse(this.enCurso.inicio));
+    return formatearCronometro(this.sesiones.duracionMs(this.enCurso, this.ahora));
   }
 
   /** Solo se puede terminar si hay al menos una serie con repeticiones. */
   get puedeTerminar(): boolean {
-    return !!this.enCurso?.ejercicios.some((e) => e.series.some((s) => this.serieHecha(s)));
+    return !!this.enCurso?.ejercicios.some((e) =>
+      e.series.some((s) => this.sesiones.serieHecha(s))
+    );
   }
 
-  /** Volumen = suma de kg × reps de todas las series. */
   volumen(sesion: Sesion): number {
-    return sesion.ejercicios
-      .flatMap((e) => e.series)
-      .reduce((suma, s) => suma + (s.kg ?? 0) * (s.reps ?? 0), 0);
+    return this.sesiones.volumen(sesion);
   }
 
   duracion(sesion: Sesion): string {
-    const fin = sesion.fin ? Date.parse(sesion.fin) : this.ahora;
-    return this.formatearDuracion(fin - Date.parse(sesion.inicio));
+    return formatearCronometro(this.sesiones.duracionMs(sesion, this.ahora));
   }
 
   fecha(sesion: Sesion): string {
@@ -147,14 +176,36 @@ export class EntrenamientoPage implements OnDestroy {
   // ------------------------------------------------------ entrenamiento: flujo
 
   empezar() {
-    this.enCurso = {
-      id: Date.now(),
-      nombre: this.nombreNuevo.trim() || 'Entrenamiento libre',
-      inicio: new Date().toISOString(),
-      ejercicios: [],
-    };
+    this.sesiones.empezar(this.nombreNuevo);
     this.nombreNuevo = '';
-    this.guardar();
+  }
+
+  /** Empieza desde una rutina; si ya hay otro entrenamiento en curso, pregunta antes. */
+  async empezarRutina(rutina: Rutina) {
+    const actual = this.enCurso;
+    if (!actual) {
+      this.sesiones.empezar('', rutina);
+      return;
+    }
+    if (actual.rutinaId === rutina.id) {
+      return; // es el mismo: se retoma donde estaba
+    }
+
+    const alerta = await this.alertas.create({
+      header: 'Ya tienes un entrenamiento en curso',
+      message: `¿Descartar "${actual.nombre}" y empezar "${rutina.nombre}"?`,
+      buttons: [
+        { text: `Seguir con ${actual.nombre}`, role: 'cancel' },
+        {
+          text: 'Descartar y empezar',
+          role: 'destructive',
+          handler: () => {
+            this.sesiones.empezar('', rutina);
+          },
+        },
+      ],
+    });
+    await alerta.present();
   }
 
   async confirmarTerminar() {
@@ -169,20 +220,22 @@ export class EntrenamientoPage implements OnDestroy {
     await alerta.present();
   }
 
-  /** Limpia series vacías, pasa la sesión al historial y deja la vista libre. */
-  terminar() {
-    if (!this.enCurso) {
+  /** Limpia series vacías, pasa la sesión al historial y muestra un resumen. */
+  async terminar() {
+    const terminada = this.sesiones.terminar();
+    if (!terminada) {
       return;
     }
 
-    const ejercicios = this.enCurso.ejercicios
-      .map((e) => ({ ...e, series: e.series.filter((s) => this.serieHecha(s)) }))
-      .filter((e) => e.series.length > 0);
-
-    const terminada: Sesion = { ...this.enCurso, fin: new Date().toISOString(), ejercicios };
-    this.historial = [terminada, ...this.historial];
-    this.enCurso = null;
-    this.guardar();
+    const aviso = await this.avisos.create({
+      message:
+        `¡Buen trabajo! ${this.duracion(terminada)} · ${this.sesiones.series(terminada)} series · ` +
+        `${this.volumen(terminada).toLocaleString('es-CL')} kg`,
+      duration: 3000,
+      position: 'top',
+      color: 'primary',
+    });
+    await aviso.present();
   }
 
   async confirmarDescartar() {
@@ -194,10 +247,7 @@ export class EntrenamientoPage implements OnDestroy {
         {
           text: 'Descartar',
           role: 'destructive',
-          handler: () => {
-            this.enCurso = null;
-            this.guardar();
-          },
+          handler: () => this.sesiones.descartar(),
         },
       ],
     });
@@ -217,11 +267,12 @@ export class EntrenamientoPage implements OnDestroy {
   /** El selector emitió un ejercicio: se agrega con una serie vacía lista para rellenar. */
   agregarEjercicio(elegido: EjercicioCatalogo) {
     this.modalCatalogoAbierto = false;
-    if (!this.enCurso) {
+    const sesion = this.enCurso;
+    if (!sesion) {
       return;
     }
 
-    this.enCurso.ejercicios.push({
+    sesion.ejercicios.push({
       id: Date.now(),
       catalogoId: elegido.id,
       nombre: elegido.nombre,
@@ -234,10 +285,11 @@ export class EntrenamientoPage implements OnDestroy {
   }
 
   quitarEjercicio(ejercicio: EjercicioSesion) {
-    if (!this.enCurso) {
+    const sesion = this.enCurso;
+    if (!sesion) {
       return;
     }
-    this.enCurso.ejercicios = this.enCurso.ejercicios.filter((e) => e.id !== ejercicio.id);
+    sesion.ejercicios = sesion.ejercicios.filter((e) => e.id !== ejercicio.id);
     this.guardar();
   }
 
@@ -257,40 +309,23 @@ export class EntrenamientoPage implements OnDestroy {
 
   /**
    * Se llama tras cada cambio, así no se pierde nada si se recarga la app.
-   * También avisa a Angular que repinte: la app no usa zone.js, y los cambios
-   * que vienen de una alerta (Terminar, Descartar) no se verían si no.
+   * También avisa a Angular que repinte: la app no usa zone.js.
    */
   guardar() {
     this.cdr.markForCheck();
-    if (this.enCurso) {
-      localStorage.setItem(CLAVE_EN_CURSO, JSON.stringify(this.enCurso));
-    } else {
-      localStorage.removeItem(CLAVE_EN_CURSO);
+    this.sesiones.guardarEnCurso();
+  }
+
+  /** Atiende ?rutinaId y lo quita de la URL, para no volver a empezarla al regresar a la pestaña. */
+  private empezarDesdeEnlace(id: number) {
+    const rutina = this.rutinasService.obtener(id);
+    if (rutina?.ejercicios.length) {
+      this.empezarRutina(rutina);
     }
-    localStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(this.historial));
-  }
-
-  private cargar() {
-    const enCurso = localStorage.getItem(CLAVE_EN_CURSO);
-    const historial = localStorage.getItem(CLAVE_HISTORIAL);
-    this.enCurso = enCurso ? JSON.parse(enCurso) : null;
-    this.historial = historial ? JSON.parse(historial) : [];
-  }
-
-  private serieHecha(serie: Serie): boolean {
-    return (serie.reps ?? 0) > 0;
+    this.router.navigate([], { relativeTo: this.ruta, queryParams: {}, replaceUrl: true });
   }
 
   private serieVacia(): Serie {
     return { kg: null, reps: null, rpe: null };
-  }
-
-  /** Milisegundos → "mm:ss", o "h:mm:ss" pasada la hora. */
-  private formatearDuracion(ms: number): string {
-    const total = Math.max(0, Math.floor(ms / 1000));
-    const horas = Math.floor(total / 3600);
-    const minutos = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
-    const segundos = String(total % 60).padStart(2, '0');
-    return horas ? `${horas}:${minutos}:${segundos}` : `${minutos}:${segundos}`;
   }
 }

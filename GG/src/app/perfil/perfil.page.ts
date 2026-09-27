@@ -1,5 +1,4 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import {
@@ -10,7 +9,12 @@ import {
   IonIcon,
   IonProgressBar,
   IonButton,
-  IonInput
+  IonInput,
+  IonSelect,
+  IonSelectOption,
+  IonDatetime,
+  IonDatetimeButton,
+  IonModal
 } from '@ionic/angular';
 
 import { addIcons } from 'ionicons';
@@ -26,8 +30,22 @@ import {
   timeOutline,
   starOutline,
   saveOutline,
-  closeOutline
+  closeOutline,
+  scaleOutline
 } from 'ionicons/icons';
+
+import { PERFIL_INICIAL, Perfil } from '../models/perfil';
+import { Rutina } from '../models/rutina';
+import { PerfilService } from '../services/perfil.service';
+import { RutinasService } from '../services/rutinas.service';
+import { SesionesService } from '../services/sesiones.service';
+import { NOMBRES_DIAS, claveDia, indiceDia, sumarDias } from '../utils/fechas';
+
+interface ProximoEntrenamiento {
+  dia: string;
+  entrenamiento: string;
+  hora: string;
+}
 
 @Component({
   selector: 'app-perfil',
@@ -42,46 +60,28 @@ import {
     IonProgressBar,
     IonButton,
     IonInput,
-    CommonModule,
+    IonSelect,
+    IonSelectOption,
+    IonDatetime,
+    IonDatetimeButton,
+    IonModal,
     FormsModule
   ],
 })
 
-export class PerfilPage implements OnInit {
+export class PerfilPage {
 
-  nombre = 'Ian';
-  apellido = 'Spikin Thomas';
+  private readonly perfilService = inject(PerfilService);
+  private readonly rutinas = inject(RutinasService);
+  private readonly sesiones = inject(SesionesService);
 
-  diasRacha = 5;
-
-  objetivo = 'Ganar masa muscular';
-  rutinaFavorita = 'Push Pull Legs';
-
-  entrenamientosSemana = 3;
-  metaSemanal = 4;
+  /** Opciones del selector de días (el índice es el día: 0 = lunes). */
+  readonly nombresDias = NOMBRES_DIAS;
 
   editando = false;
 
-  // Copia temporal por si el usuario cancela
-  perfilTemporal: any = {};
-
-  proximosEntrenamientos = [
-    {
-      dia: 'Lunes 23',
-      entrenamiento: 'Pecho y tríceps',
-      hora: '18:00'
-    },
-    {
-      dia: 'Miércoles 25',
-      entrenamiento: 'Espalda y bíceps',
-      hora: '18:30'
-    },
-    {
-      dia: 'Viernes 27',
-      entrenamiento: 'Piernas',
-      hora: '17:30'
-    }
-  ];
+  // Copia que se edita; solo pasa al perfil al pulsar "Guardar cambios"
+  borrador: Perfil = this.copiar(PERFIL_INICIAL);
 
   constructor() {
 
@@ -96,30 +96,70 @@ export class PerfilPage implements OnInit {
       timeOutline,
       starOutline,
       saveOutline,
-      closeOutline
+      closeOutline,
+      scaleOutline
     });
 
   }
 
-  ngOnInit() {
+  // Todo se lee de los servicios: lo que cambia aquí se ve en Inicio, Calorías y Logros
 
-    this.cargarPerfil();
-
+  get perfil(): Perfil {
+    return this.perfilService.perfil();
   }
 
-  get progresoSemanal() {
-    return this.entrenamientosSemana / this.metaSemanal;
+  get nombreCompleto(): string {
+    return this.perfilService.nombreCompleto();
+  }
+
+  get diasRacha(): number {
+    return this.sesiones.rachaActual();
+  }
+
+  get entrenamientosSemana(): number {
+    return this.sesiones.deLaSemana().length;
+  }
+
+  get metaSemanal(): number {
+    return this.perfilService.metaSemanal();
+  }
+
+  get progresoSemanal(): number {
+    return this.metaSemanal ? Math.min(1, this.entrenamientosSemana / this.metaSemanal) : 0;
+  }
+
+  get listaRutinas(): Rutina[] {
+    return this.rutinas.rutinas();
+  }
+
+  get rutinaFavorita(): string {
+    return this.rutinas.obtener(this.perfil.rutinaFavoritaId)?.nombre ?? 'Sin elegir';
+  }
+
+  /** Próximos 3 días de entrenamiento, cada uno con la rutina que toca en la rotación. */
+  get proximosEntrenamientos(): ProximoEntrenamiento[] {
+
+    const hoy = new Date();
+
+    // Si hoy ya entrenó, lo próximo empieza mañana
+    const desde = this.sesiones.entrenoEl(hoy) ? sumarDias(hoy, 1) : hoy;
+    const fechas = this.perfilService.proximosDias(3, desde);
+    const rutinas = this.rutinas.proximas(fechas.length);
+
+    return fechas.map((fecha, i) => ({
+      dia: claveDia(fecha) === claveDia(hoy)
+        ? 'Hoy'
+        : `${NOMBRES_DIAS[indiceDia(fecha)]} ${fecha.getDate()}`,
+      entrenamiento: rutinas[i]?.nombre ?? 'Entrenamiento libre',
+      hora: this.perfil.horaEntrenamiento
+    }));
+
   }
 
 
   editarPerfil() {
 
-    this.perfilTemporal = {
-      nombre: this.nombre,
-      apellido: this.apellido,
-      objetivo: this.objetivo,
-      rutinaFavorita: this.rutinaFavorita
-    };
+    this.borrador = this.copiar(this.perfil);
 
     this.editando = true;
 
@@ -128,46 +168,46 @@ export class PerfilPage implements OnInit {
 
   guardarPerfil() {
 
-    const perfil = {
-      nombre: this.nombre,
-      apellido: this.apellido,
-      objetivo: this.objetivo,
-      rutinaFavorita: this.rutinaFavorita
-    };
-
-    localStorage.setItem('perfilUsuario', JSON.stringify(perfil));
+    this.perfilService.actualizar({
+      ...this.borrador,
+      nombre: this.borrador.nombre.trim(),
+      apellido: this.borrador.apellido.trim(),
+      objetivo: this.borrador.objetivo.trim(),
+      pesoKg: Number(this.borrador.pesoKg) > 0 ? Number(this.borrador.pesoKg) : this.perfil.pesoKg,
+      diasEntrenamiento: [...this.borrador.diasEntrenamiento].sort((a, b) => a - b)
+    });
 
     this.editando = false;
+
+  }
+
+
+  /** ion-datetime entrega un ISO completo ("2026-09-27T18:30:00"); el perfil guarda "18:30". */
+  cambiarHora(valor: string | string[] | null | undefined) {
+
+    const hora = /(\d{2}):(\d{2})/.exec(String(valor ?? ''));
+
+    if (hora) {
+      this.borrador.horaEntrenamiento = `${hora[1]}:${hora[2]}`;
+    }
 
   }
 
 
   cancelarEdicion() {
 
-    this.nombre = this.perfilTemporal.nombre;
-    this.apellido = this.perfilTemporal.apellido;
-    this.objetivo = this.perfilTemporal.objetivo;
-    this.rutinaFavorita = this.perfilTemporal.rutinaFavorita;
-
     this.editando = false;
 
   }
 
 
-  cargarPerfil() {
+  private copiar(perfil: Perfil): Perfil {
 
-    const perfilGuardado = localStorage.getItem('perfilUsuario');
-
-    if (perfilGuardado) {
-
-      const perfil = JSON.parse(perfilGuardado);
-
-      this.nombre = perfil.nombre;
-      this.apellido = perfil.apellido;
-      this.objetivo = perfil.objetivo;
-      this.rutinaFavorita = perfil.rutinaFavorita;
-
-    }
+    return {
+      ...perfil,
+      diasEntrenamiento: [...perfil.diasEntrenamiento],
+      metasMacros: { ...perfil.metasMacros }
+    };
 
   }
 

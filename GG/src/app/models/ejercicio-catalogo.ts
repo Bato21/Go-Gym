@@ -16,6 +16,8 @@ export type GrupoMuscular =
 
 export type Nivel = 'Principiante' | 'Intermedio' | 'Avanzado';
 
+export const NIVELES: Nivel[] = ['Principiante', 'Intermedio', 'Avanzado'];
+
 export interface EjercicioCatalogo {
   /** Slug estable, ej. "barbell-bench-press". Es la clave que guardamos en la rutina. */
   id: string;

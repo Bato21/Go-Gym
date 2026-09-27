@@ -38,7 +38,12 @@ import {
 
 import { SelectorEjercicioComponent } from '../components/selector-ejercicio/selector-ejercicio.component';
 import { EjercicioCatalogo } from '../models/ejercicio-catalogo';
-import { CLAVE_HISTORIAL, Sesion } from '../models/sesion';
+import { MET_POR_DEFECTO } from '../models/rutina';
+import { Sesion } from '../models/sesion';
+import { PerfilService } from '../services/perfil.service';
+import { SesionesService } from '../services/sesiones.service';
+import { escribir, leer } from '../utils/almacenamiento';
+import { claveDia as clave } from '../utils/fechas';
 
 interface Comida {
   id: number;
@@ -62,11 +67,8 @@ interface RegistroDia {
   actividades: Actividad[];
 }
 
-/** Todo lo de esta vista se guarda en una sola clave de localStorage. */
+/** Comidas y actividades de cada día. La meta y el peso viven en el perfil. */
 const CLAVE_STORAGE = 'caloriasUsuario';
-
-/** MET para ejercicios guardados antes de que la sesión registrara el MET. */
-const MET_POR_DEFECTO = 5;
 
 @Component({
   selector: 'app-calorias',
@@ -100,18 +102,8 @@ const MET_POR_DEFECTO = 5;
 export class CaloriasPage {
   tiposComida = ['Desayuno', 'Almuerzo', 'Once', 'Cena', 'Snack'];
 
-  /** Ajustables desde el botón de la barra superior. */
-  meta = 2200;
-  pesoKg = 75;
-
-  /** Metas de macros en gramos, fijas por ahora (las del mockup). */
-  metasMacros = { proteina: 150, carbohidratos: 260, grasas: 70 };
-
   /** Un registro por día, con clave "2026-09-26". */
   registros: Record<string, RegistroDia> = {};
-
-  /** Entrenamientos terminados (los escribe la pestaña Entrenamiento). */
-  entrenamientos: Sesion[] = [];
 
   /** Día que se está mirando. Empieza en hoy y se mueve con las flechas. */
   fecha = new Date();
@@ -126,6 +118,8 @@ export class CaloriasPage {
 
   private readonly alertas = inject(AlertController);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly perfil = inject(PerfilService);
+  private readonly sesiones = inject(SesionesService);
 
   constructor() {
     addIcons({
@@ -142,14 +136,25 @@ export class CaloriasPage {
     this.cargar();
   }
 
-  /** Se relee al entrar a la pestaña, por si se terminó un entrenamiento. */
-  ionViewWillEnter() {
-    const historial = localStorage.getItem(CLAVE_HISTORIAL);
-    this.entrenamientos = historial ? JSON.parse(historial) : [];
-    this.cdr.markForCheck();
+  // ---------------------------------------------------------------- lecturas
+
+  /** Meta, peso y macros salen del perfil: se editan aquí o en Perfil y valen en toda la app. */
+  get meta(): number {
+    return this.perfil.perfil().metaCalorias;
   }
 
-  // ---------------------------------------------------------------- lecturas
+  get pesoKg(): number {
+    return this.perfil.perfil().pesoKg;
+  }
+
+  get metasMacros() {
+    return this.perfil.perfil().metasMacros;
+  }
+
+  /** Entrenamientos terminados (los escribe la pestaña Entrenamiento). */
+  get entrenamientos(): Sesion[] {
+    return this.sesiones.historial();
+  }
 
   get dia(): RegistroDia {
     return this.registros[this.claveDia] ?? { comidas: [], actividades: [] };
@@ -165,7 +170,7 @@ export class CaloriasPage {
    */
   get actividadesEntrenamiento(): Actividad[] {
     return this.entrenamientos
-      .filter((s) => s.fin && this.clave(new Date(s.inicio)) === this.claveDia)
+      .filter((s) => s.fin && clave(new Date(s.inicio)) === this.claveDia)
       .map((s) => {
         const series = s.ejercicios.reduce((suma, e) => suma + e.series.length, 0);
         const metPorSerie = s.ejercicios.reduce(
@@ -176,7 +181,7 @@ export class CaloriasPage {
           id: s.id,
           nombre: s.nombre,
           met: series ? Math.round((metPorSerie / series) * 10) / 10 : MET_POR_DEFECTO,
-          minutos: Math.round((Date.parse(s.fin!) - Date.parse(s.inicio)) / 60000),
+          minutos: Math.round(this.sesiones.duracionMs(s) / 60000),
         };
       });
   }
@@ -216,7 +221,7 @@ export class CaloriasPage {
   }
 
   get esHoy(): boolean {
-    return this.claveDia === this.clave(new Date());
+    return this.claveDia === clave(new Date());
   }
 
   /** "Hoy · 26 sept", "Ayer · 25 sept" o "Miércoles · 24 sept". */
@@ -227,7 +232,7 @@ export class CaloriasPage {
     let nombre: string;
     if (this.esHoy) {
       nombre = 'Hoy';
-    } else if (this.claveDia === this.clave(ayer)) {
+    } else if (this.claveDia === clave(ayer)) {
       nombre = 'Ayer';
     } else {
       nombre = this.fecha.toLocaleDateString('es-CL', { weekday: 'long' });
@@ -344,25 +349,37 @@ export class CaloriasPage {
   }
 
   async ajustar() {
+    const { metasMacros } = this;
     const alerta = await this.alertas.create({
       header: 'Ajustes',
+      subHeader: 'Se guardan en tu perfil',
       inputs: [
         { name: 'meta', type: 'number', label: 'Meta diaria (kcal)', placeholder: 'Meta diaria (kcal)', value: this.meta },
         { name: 'peso', type: 'number', label: 'Tu peso (kg)', placeholder: 'Tu peso (kg)', value: this.pesoKg },
+        { name: 'proteina', type: 'number', placeholder: 'Proteína (g)', value: metasMacros.proteina },
+        { name: 'carbohidratos', type: 'number', placeholder: 'Carbohidratos (g)', value: metasMacros.carbohidratos },
+        { name: 'grasas', type: 'number', placeholder: 'Grasas (g)', value: metasMacros.grasas },
       ],
       buttons: [
         { text: 'Cancelar', role: 'cancel' },
         {
           text: 'Guardar',
-          handler: (datos: { meta: string; peso: string }) => {
-            const meta = Number(datos.meta);
-            const peso = Number(datos.peso);
-            if (meta <= 0 || peso <= 0) {
-              return false;
+          handler: (datos: Record<string, string>) => {
+            const [meta, peso, proteina, carbohidratos, grasas] = [
+              datos['meta'],
+              datos['peso'],
+              datos['proteina'],
+              datos['carbohidratos'],
+              datos['grasas'],
+            ].map(Number);
+            if (!(meta > 0 && peso > 0) || [proteina, carbohidratos, grasas].some((g) => !(g >= 0))) {
+              return false; // deja la alerta abierta
             }
-            this.meta = meta;
-            this.pesoKg = peso;
-            this.guardar();
+            this.perfil.actualizar({
+              metaCalorias: meta,
+              pesoKg: peso,
+              metasMacros: { proteina, carbohidratos, grasas },
+            });
             return true;
           },
         },
@@ -384,14 +401,7 @@ export class CaloriasPage {
   }
 
   private get claveDia(): string {
-    return this.clave(this.fecha);
-  }
-
-  /** Fecha local en formato "AAAA-MM-DD" (toISOString usaría UTC y cambiaría de día de noche). */
-  private clave(fecha: Date): string {
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dia = String(fecha.getDate()).padStart(2, '0');
-    return `${fecha.getFullYear()}-${mes}-${dia}`;
+    return clave(this.fecha);
   }
 
   /** El registro del día mostrado; lo crea si ese día todavía no tenía nada. */
@@ -403,19 +413,11 @@ export class CaloriasPage {
   /** Guarda y repinta: la app no usa zone.js, y los cambios desde alertas no se verían. */
   private guardar() {
     this.cdr.markForCheck();
-    const datos = { meta: this.meta, pesoKg: this.pesoKg, registros: this.registros };
-    localStorage.setItem(CLAVE_STORAGE, JSON.stringify(datos));
+    escribir(CLAVE_STORAGE, { registros: this.registros });
   }
 
   private cargar() {
-    const guardado = localStorage.getItem(CLAVE_STORAGE);
-    if (!guardado) {
-      return;
-    }
-    const datos = JSON.parse(guardado);
-    this.meta = datos.meta ?? this.meta;
-    this.pesoKg = datos.pesoKg ?? this.pesoKg;
-    this.registros = datos.registros ?? {};
+    this.registros = leer<{ registros?: Record<string, RegistroDia> }>(CLAVE_STORAGE, {}).registros ?? {};
   }
 
   private comidaVacia(): Omit<Comida, 'id'> {

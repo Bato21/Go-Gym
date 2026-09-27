@@ -14,7 +14,7 @@
       </div>
       <h1>Mis logros</h1>
       <p>
-        {{ logrosCompletados }} de {{ logros.length }} desbloqueados
+        {{ logrosCompletados }} de {{ logros().length }} desbloqueados
       </p>
       <!-- Esta barra de progreso muestra visualmente el porcentaje de logros completados -->
       <ion-progress-bar
@@ -26,27 +26,33 @@
     </div>
     <!-- Esta sección lista todos los logros del usuario, mostrando un icono, título, descripción y estado de cada logro -->
     <h2>Tus logros</h2>
-    <div
-      class="logro"
-      *ngFor="let logro of logros"
-      [class.bloqueado]="!logro.completado"
-    >
-      <div class="icono">
-        <ion-icon
-          [name]="logro.completado ? logro.icono : 'lock-closed-outline'">
-        </ion-icon>
-      </div>
-      <div class="informacion">
-        <h3>{{ logro.titulo }}</h3>
-        <p>
-          {{ logro.descripcion }}
-        </p>
-      </div>
+    @for (logro of logros(); track logro.titulo) {
       <div
-        class="estado"
-        *ngIf="logro.completado">
-        ✓
+        class="logro"
+        [class.bloqueado]="!logro.completado"
+      >
+        <div class="icono">
+          <ion-icon
+            [name]="logro.completado ? logro.icono : 'lock-closed-outline'">
+          </ion-icon>
+        </div>
+        <div class="informacion">
+          <h3>{{ logro.titulo }}</h3>
+          <p>
+            {{ logro.descripcion }}
+          </p>
+        </div>
+        @if (logro.completado) {
+          <div class="estado">
+            ✓
+          </div>
+        } @else if (logro.objetivo > 1) {
+          <!-- Avance hacia el logro, ej. 7/10 -->
+          <div class="avance">
+            {{ logro.actual }}/{{ logro.objetivo }}
+          </div>
+        }
       </div>
-    </div>
+    }
   </div>
 </ion-content>
